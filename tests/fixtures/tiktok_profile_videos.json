@@ -1,0 +1,11 @@
+{
+  "aweme_list": [
+    {
+      "aweme_id": "777",
+      "desc": "claude code in 60 seconds",
+      "create_time": 1710460800,
+      "author": {"unique_id": "creator"},
+      "statistics": {"play_count": 100000, "digg_count": 4000, "comment_count": 80, "share_count": 50, "collect_count": 30}
+    }
+  ]
+}

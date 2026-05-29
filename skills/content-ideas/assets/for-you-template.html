@@ -1,0 +1,1542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>For You</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #FAF6F1;
+      --surface: #FFFFFF;
+      --surface-hover: #FDF9F5;
+      --border: #E8E0D8;
+      --border-light: #EDE6DE;
+      --text: #1A1A1A;
+      --text-secondary: #6B6560;
+      --text-tertiary: #9B9490;
+      --accent: #D4572A;
+      --accent-light: #FFF0EB;
+      --accent-hover: #B8461F;
+      --positive: #1D7A4E;
+      --positive-light: #EDFAF3;
+      --warning: #B8860B;
+      --warning-light: #FFF8E6;
+      --tag-bg: #F0ECE6;
+      --picks-bg: #FFFAF7;
+      --picks-border: #F0D6C8;
+      --picks-gradient: linear-gradient(135deg, #D4572A 0%, #B8860B 100%);
+      --platform-x: #1A8CD8;
+      --platform-x-bg: #E8F4FD;
+      --platform-reddit: #FF4500;
+      --platform-reddit-bg: #FFF0EB;
+      --platform-youtube: #CC0000;
+      --platform-youtube-bg: #FFEBEE;
+      --platform-linkedin: #0A66C2;
+      --platform-linkedin-bg: #E8F0FE;
+      --platform-instagram: #C13584;
+      --platform-instagram-bg: #FDE8F0;
+      --heading-font: 'DM Sans', sans-serif;
+      --body-font: 'DM Sans', sans-serif;
+      --mono-font: 'IBM Plex Mono', monospace;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: var(--body-font);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    .shell {
+      max-width: 680px;
+      margin: 0 auto;
+      border-left: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      min-height: 100vh;
+      background: var(--bg);
+    }
+
+    /* ── Sticky Header ── */
+    .top-bar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(250, 246, 241, 0.88);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .top-bar-title {
+      padding: 14px 20px 0;
+    }
+    .top-bar-title h1 {
+      font-family: var(--heading-font);
+      font-size: 1.65rem;
+      font-weight: 800;
+      color: var(--text);
+      line-height: 1.2;
+    }
+    .top-bar-subtitle {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-top: 3px;
+    }
+
+    /* ── Tab Nav ── */
+    .tab-nav {
+      display: flex;
+      margin-top: 10px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .tab-nav::-webkit-scrollbar { display: none; }
+
+    .tab-btn {
+      flex: 1;
+      min-width: max-content;
+      padding: 12px 16px;
+      font-family: var(--body-font);
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      background: none;
+      border: none;
+      cursor: pointer;
+      position: relative;
+      transition: color 0.2s;
+      white-space: nowrap;
+    }
+    .tab-btn:hover { color: var(--text); background: rgba(26,26,26,0.03); }
+    .tab-btn.active { color: var(--text); font-weight: 700; }
+    .tab-btn.active::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 48px;
+      height: 3px;
+      background: var(--accent);
+      border-radius: 2px;
+    }
+
+    /* ── Sections ── */
+    .feed-section { display: none; }
+    .feed-section.active { display: block; }
+
+    .section-label {
+      padding: 10px 20px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    /* ── Feed Card (base) ── */
+    .card {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+      cursor: pointer;
+    }
+    .card:hover { background: var(--surface-hover); }
+
+    .card-header {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .card-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .avatar-x { background: #1A8CD8; }
+    .avatar-x::after { content: '\1D54F'; font-size: 18px; }
+    .avatar-reddit { background: var(--platform-reddit); }
+    .avatar-reddit::after { content: 'R'; }
+    .avatar-youtube { background: var(--platform-youtube); }
+    .avatar-youtube::after { content: '\25B6'; font-size: 14px; }
+    .avatar-linkedin { background: var(--platform-linkedin); }
+    .avatar-linkedin::after { content: 'in'; font-size: 13px; font-weight: 800; }
+    .avatar-instagram { background: var(--platform-instagram); }
+    .avatar-instagram::after { content: 'IG'; font-size: 12px; font-weight: 800; }
+    .avatar-tiktok { background: #010101; }
+    .avatar-tiktok::after { content: 'TT'; font-size: 12px; font-weight: 800; }
+
+    .card-body { flex: 1; min-width: 0; }
+
+    .card-source {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 2px;
+    }
+    .card-source .handle { color: var(--text); font-weight: 700; }
+    .card-source .sub-handle { color: var(--text-secondary); font-family: var(--mono-font); font-size: 12px; }
+    .card-source .dot { margin: 0 2px; }
+    .card-source .time { color: var(--text-tertiary); }
+
+    .card-title {
+      font-family: var(--heading-font);
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+      line-height: 1.35;
+    }
+
+    .card-text {
+      font-size: 14px;
+      color: var(--text);
+      line-height: 1.6;
+      margin-bottom: 8px;
+    }
+    .card-text a { color: var(--accent); text-decoration: none; }
+    .card-text a:hover { text-decoration: underline; }
+
+    .card-stats {
+      font-family: var(--mono-font);
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 8px;
+    }
+
+    /* Engagement bar */
+    .engagement {
+      display: flex;
+      gap: 0;
+      margin-top: 8px;
+      max-width: 400px;
+    }
+    .eng-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex: 1;
+      font-family: var(--mono-font);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      padding: 4px 0;
+      cursor: default;
+      transition: color 0.15s;
+    }
+    .eng-btn svg {
+      width: 17px;
+      height: 17px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.8;
+    }
+    .eng-btn.reply:hover { color: var(--platform-x); }
+    .eng-btn.repost:hover { color: var(--positive); }
+    .eng-btn.heart:hover { color: var(--accent); }
+    .eng-btn.views:hover { color: var(--platform-x); }
+    .eng-btn.bookmark:hover { color: var(--warning); }
+
+    /* Tags row */
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 10px;
+    }
+    .tag {
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 3px 9px;
+      border-radius: 4px;
+      letter-spacing: 0.02em;
+    }
+    .tag-why { background: var(--tag-bg); color: var(--text-secondary); }
+    .tag-angle { background: var(--accent-light); color: var(--accent); }
+    .tag-tofu { background: var(--accent-light); color: var(--accent); }
+    .tag-mofu { background: var(--warning-light); color: var(--warning); }
+    .tag-bofu { background: var(--positive-light); color: var(--positive); }
+    .tag-zscore {
+      font-family: var(--mono-font);
+      background: var(--accent-light);
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .tag-platform {
+      background: var(--surface);
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+    }
+    .tag-platform a { color: inherit; text-decoration: none; }
+    .tag-bookmarked {
+      background: var(--warning-light);
+      color: var(--warning);
+      font-weight: 700;
+    }
+
+    /* Why / insight blocks */
+    .insight-block {
+      margin-top: 8px;
+      padding: 10px 12px;
+      background: var(--surface);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+    .insight-block strong { color: var(--text); font-weight: 600; }
+
+    /* Embedded quote (comment) */
+    .quote-block {
+      margin-top: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .quote-row {
+      background: var(--bg);
+      border-radius: 10px;
+      padding: 10px 14px;
+      border: 1px solid var(--border-light);
+    }
+    .quote-handle {
+      font-family: var(--mono-font);
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      display: block;
+      margin-bottom: 3px;
+    }
+    .quote-text {
+      font-size: 13.5px;
+      color: var(--text);
+      line-height: 1.5;
+      display: block;
+    }
+    .quote-engagement {
+      font-family: var(--mono-font);
+      font-size: 0.68rem;
+      color: var(--text-tertiary);
+      margin-top: 4px;
+      display: block;
+    }
+    .quote-signal {
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--accent);
+      margin-top: 4px;
+      display: inline-block;
+    }
+
+    /* Hook callout */
+    .hook-block {
+      margin-top: 10px;
+      padding: 10px 14px;
+      background: var(--accent-light);
+      border-left: 3px solid var(--accent);
+      border-radius: 0 10px 10px 0;
+      font-size: 14px;
+      color: var(--text);
+      line-height: 1.5;
+      font-style: italic;
+    }
+    .hook-label {
+      font-style: normal;
+      font-weight: 700;
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--accent);
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    /* CTA line */
+    .cta-line {
+      font-size: 13px;
+      color: var(--text);
+      background: var(--positive-light);
+      padding: 6px 10px;
+      border-radius: 6px;
+      margin-top: 8px;
+    }
+    .cta-line strong { color: var(--positive); }
+
+    /* ── Posts Control Bar (sort + filter tokens) ── */
+    .control-bar {
+      padding: 10px 20px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      border-top: 1px solid var(--border-light);
+    }
+
+    /* Sort: minimal segmented control */
+    .seg {
+      display: inline-flex;
+      background: var(--tag-bg);
+      border-radius: 999px;
+      padding: 3px;
+    }
+    .seg-btn {
+      border: none;
+      background: none;
+      font-family: var(--body-font);
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      padding: 5px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .seg-btn.active {
+      background: var(--surface);
+      color: var(--text);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.07);
+    }
+
+    /* Filter tokens: "Label │ Value ×" pills */
+    .ft-wrap { position: relative; display: inline-flex; }
+    .filter-token {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--surface);
+      cursor: pointer;
+      font-family: var(--body-font);
+      font-size: 12.5px;
+      line-height: 1;
+      transition: border-color 0.15s, background 0.15s;
+      user-select: none;
+    }
+    .filter-token:hover { border-color: var(--text-tertiary); }
+    .ft-wrap.open .filter-token { border-color: var(--text-secondary); }
+    .ft-label { color: var(--text-secondary); font-weight: 500; }
+    .ft-sep { width: 1px; height: 13px; background: var(--border); }
+    .ft-value { color: var(--text); font-weight: 700; }
+    .ft-chevron {
+      width: 12px; height: 12px; flex-shrink: 0;
+      stroke: var(--text-tertiary); stroke-width: 2; fill: none;
+      stroke-linecap: round; stroke-linejoin: round;
+      transition: transform 0.15s;
+    }
+    .ft-wrap.open .ft-chevron { transform: rotate(180deg); }
+    .ft-clear {
+      display: none;
+      align-items: center; justify-content: center;
+      width: 16px; height: 16px; padding: 0; margin: -1px -2px -1px 0;
+      border: none; border-radius: 50%; background: none;
+      color: var(--text-tertiary); cursor: pointer; font-size: 15px; line-height: 1;
+    }
+    .ft-clear:hover { background: var(--tag-bg); color: var(--text); }
+    .filter-token.is-set { border-color: var(--text-tertiary); background: var(--surface-hover); }
+    .filter-token.is-set .ft-chevron { display: none; }
+    .filter-token.is-set .ft-clear { display: inline-flex; }
+
+    /* Filter dropdown menu */
+    .ft-menu {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      z-index: 200;
+      min-width: 168px;
+      max-height: 300px;
+      overflow-y: auto;
+      padding: 6px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+      display: none;
+    }
+    .ft-wrap.open .ft-menu { display: block; }
+    .ft-opt {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 13px;
+      color: var(--text);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .ft-opt:hover { background: var(--surface-hover); }
+    .ft-check {
+      width: 15px; height: 15px; flex-shrink: 0;
+      stroke: var(--accent); stroke-width: 2.4; fill: none;
+      stroke-linecap: round; stroke-linejoin: round;
+      opacity: 0;
+    }
+    .ft-opt.selected { font-weight: 600; }
+    .ft-opt.selected .ft-check { opacity: 1; }
+
+    /* Outliers: plain toggle pill */
+    .ctrl-toggle {
+      font-family: var(--body-font);
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 6px 14px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .ctrl-toggle:hover { border-color: var(--text-tertiary); }
+    .ctrl-toggle.active {
+      background: var(--accent-light);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .ctrl-spacer { flex: 1; }
+    .ctrl-count {
+      font-family: var(--mono-font);
+      font-size: 11px;
+      color: var(--text-tertiary);
+      white-space: nowrap;
+    }
+
+    /* ── Outlier accent + intensity (1–4) ── */
+    .card.ob1 { box-shadow: inset 4px 0 0 0 #F0C0A8; }
+    .card.ob2 { box-shadow: inset 4px 0 0 0 #E39468; }
+    .card.ob3 { box-shadow: inset 4px 0 0 0 var(--accent); }
+    .card.ob4 { box-shadow: inset 4px 0 0 0 var(--accent-hover); background: var(--accent-light); }
+    .card.ob4:hover { background: #FFE7DC; }
+    .outlier-badge {
+      font-family: var(--mono-font);
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 4px;
+      letter-spacing: 0.01em;
+      display: inline-flex;
+      align-items: center;
+    }
+    .outlier-badge.ob1 { background: var(--accent-light); color: var(--accent); }
+    .outlier-badge.ob2 { background: #FBD9C8; color: var(--accent-hover); }
+    .outlier-badge.ob3 { background: var(--accent); color: #fff; }
+    .outlier-badge.ob4 { background: var(--accent-hover); color: #fff; }
+
+    /* ── Audience Requests Highlight (top of Ideas tab) ── */
+    .audience-highlight {
+      margin: 12px 20px 16px;
+      padding: 16px 18px;
+      background: var(--accent-light);
+      border-left: 3px solid var(--accent);
+      border-radius: 0 10px 10px 0;
+    }
+    .audience-highlight-title {
+      font-family: var(--heading-font);
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+    .audience-highlight .quote-block { margin-top: 0; }
+    .audience-highlight .quote-row { background: rgba(255,255,255,0.6); }
+
+    /* ── Past Coverage Callout (inside idea cards) ── */
+    .past-coverage {
+      margin-top: 8px;
+      padding: 10px 12px;
+      background: var(--tag-bg);
+      border-radius: 8px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+    .past-coverage strong { color: var(--text); font-weight: 600; }
+
+    /* ── Ideas Section (elevated) ── */
+    .picks-card {
+      margin: 12px 20px;
+      border: 1px solid transparent;
+      border-radius: 12px;
+      background: var(--picks-bg);
+      overflow: hidden;
+      position: relative;
+    }
+    .picks-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 12px;
+      padding: 1px;
+      background: var(--picks-gradient);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+    }
+    .picks-inner { padding: 18px 20px; }
+    .picks-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+    .picks-title {
+      font-family: var(--heading-font);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+      line-height: 1.35;
+    }
+    .picks-concept {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      margin-bottom: 12px;
+    }
+    .picks-detail { display: grid; gap: 8px; }
+    .picks-detail-item {
+      padding: 10px 12px;
+      background: var(--bg);
+      border-radius: 8px;
+      border: 1px solid var(--picks-border);
+    }
+    .picks-detail-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-secondary);
+      margin-bottom: 3px;
+    }
+    .picks-detail-text {
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .picks-hook { font-style: italic; color: var(--accent); }
+    .picks-repurpose {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 4px;
+    }
+    .repurpose-tag {
+      font-size: 0.68rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: var(--accent-light);
+      color: var(--accent);
+    }
+
+    /* Collapsible content within picks */
+    .picks-toggle { cursor: pointer; user-select: none; }
+    .picks-expand {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.35s ease;
+    }
+    .picks-card.open .picks-expand { max-height: 1500px; }
+    .expand-hint {
+      font-size: 12px;
+      color: var(--accent);
+      font-weight: 500;
+      margin-top: 4px;
+    }
+    .picks-card.open .expand-hint { display: none; }
+
+    /* ── Patterns (footer) ── */
+    .patterns-section {
+      padding: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .patterns-title {
+      font-family: var(--heading-font);
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .pattern-item {
+      display: flex;
+      gap: 10px;
+      padding: 8px 0;
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+    .pattern-bullet {
+      color: var(--accent);
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    /* ── Footer ── */
+    .feed-footer {
+      padding: 24px 20px 48px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
+
+    /* ── Empty state ── */
+    .empty-state {
+      padding: 40px 20px;
+      text-align: center;
+      font-size: 14px;
+      color: var(--text-tertiary);
+    }
+
+    /* ── Print ── */
+    @media print {
+      :root {
+        --bg: #FFFFFF;
+        --surface: #F8F8F8;
+        --surface-hover: #F0F0F0;
+        --border: #DDD;
+        --border-light: #EEE;
+      }
+      body { background: white; color: #111; }
+      .shell { border: none; max-width: 100%; }
+      .top-bar { position: static; background: white; backdrop-filter: none; }
+      .feed-section { display: block !important; }
+      .tab-nav, .control-bar { display: none; }
+      .card { display: block !important; box-shadow: none; }
+      .picks-expand { max-height: none !important; overflow: visible !important; }
+      .expand-hint { display: none; }
+      .card:hover { background: transparent; }
+      .picks-card::before { display: none; }
+      .picks-card { border: 1px solid #ddd; }
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .shell { border: none; }
+      .tab-btn { font-size: 13px; padding: 10px 12px; }
+      .picks-inner { padding: 14px 16px; }
+      .picks-title { font-size: 1rem; }
+      .engagement { max-width: 100%; }
+      .card { padding: 12px 16px; }
+      .control-bar { padding: 9px 16px 11px; gap: 7px; }
+      .picks-card { margin: 10px 16px; }
+      .patterns-section { padding: 16px; }
+      .top-bar-title { padding: 12px 16px 0; }
+    }
+
+    @media (min-width: 1024px) {
+      .shell {
+        border-left: 1px solid var(--border);
+        border-right: 1px solid var(--border);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell" id="feed-root"></div>
+  <script>
+    // Feed data + feedback config are injected here by generate_feed.py.
+    // Opening this raw template directly will show the empty state.
+    /*__EMBEDDED_DATA__*/
+  </script>
+  <script>
+    // ── SVG Icon Paths ──
+    const SVG_REPLY = '<svg viewBox="0 0 24 24"><path d="M1.751 10c0-4.42 3.58-8 8-8h4.498c4.42 0 8 3.58 8 8v2.947c0 4.42-3.58 8-8 8h-1.15l-4.898 3.27a.75.75 0 01-1.2-.6v-2.67h-.25c-4.42 0-8-3.58-8-8V10z"/></svg>';
+    const SVG_REPOST = '<svg viewBox="0 0 24 24"><path d="M4.5 3.88l4.432 4.14-1.364 1.46L5.5 7.55V16c0 1.1.896 2 2 2H13v2H7.5c-2.209 0-4-1.791-4-4V7.55L1.432 9.48.068 8.02 4.5 3.88zM16.5 6H11V4h5.5c2.209 0 4 1.791 4 4v8.45l2.068-1.93 1.364 1.46-4.432 4.14-4.432-4.14 1.364-1.46 2.068 1.93V8c0-1.1-.896-2-2-2z"/></svg>';
+    const SVG_HEART = '<svg viewBox="0 0 24 24"><path d="M16.697 5.5c-1.222-.06-2.679.51-3.89 2.16l-.805 1.09-.806-1.09C9.984 6.01 8.526 5.44 7.304 5.5c-1.243.07-2.349.78-2.91 1.91-.552 1.12-.633 2.78.479 4.82 1.074 1.97 3.257 4.27 7.129 6.61 3.87-2.34 6.052-4.64 7.126-6.61 1.111-2.04 1.03-3.7.477-4.82-.561-1.13-1.666-1.84-2.908-1.91z"/></svg>';
+    const SVG_BOOKMARK = '<svg viewBox="0 0 24 24"><path d="M4 4.5C4 3.12 5.119 2 6.5 2h11C18.881 2 20 3.12 20 4.5v18.44l-8-5.71-8 5.71V4.5z"/></svg>';
+    const SVG_EYE = '<svg viewBox="0 0 24 24"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>';
+
+    // ── Helpers ──
+
+    function esc(s) {
+      if (!s) return '';
+      var d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    function fmtNum(n) {
+      if (n == null) return '\u2014';
+      return n.toLocaleString();
+    }
+
+    function boldMd(s) {
+      if (!s) return '';
+      return esc(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    }
+
+    function renderComments(comments) {
+      if (!comments || !comments.length) return '';
+      var html = '<div class="quote-block">';
+      for (var i = 0; i < comments.length; i++) {
+        var c = comments[i];
+        html += '<div class="quote-row">';
+        html += '<span class="quote-handle">' + esc(c.handle) + '</span>';
+        html += '<span class="quote-text">' + esc(c.text) + '</span>';
+        if (c.engagement) html += '<span class="quote-engagement">' + esc(c.engagement) + '</span>';
+        if (c.signal) html += '<span class="quote-signal">' + esc(c.signal) + '</span>';
+        html += '</div>';
+      }
+      html += '</div>';
+      return html;
+    }
+
+    function renderHook(hookText) {
+      if (!hookText) return '';
+      return '<div class="hook-block"><span class="hook-label">Hook</span>' + esc(hookText) + '</div>';
+    }
+
+    function renderEngagement(eng) {
+      if (!eng) return '';
+      // Each metric carries its own icon. Views (eye) and saves/bookmarks
+      // (bookmark) are distinct — never render views under the save icon.
+      // `saves` and `bookmarks` are aliases for the same slot across platforms
+      // (TikTok/IG = saves, X = bookmarks). A metric is omitted when null/absent
+      // so each platform shows only the metrics it actually has.
+      var saves = eng.bookmarks != null ? eng.bookmarks : eng.saves;
+      var slots = [
+        { val: eng.replies, icon: SVG_REPLY,    cls: 'reply' },
+        { val: eng.reposts, icon: SVG_REPOST,   cls: 'repost' },
+        { val: eng.likes,   icon: SVG_HEART,    cls: 'heart' },
+        { val: eng.views,   icon: SVG_EYE,      cls: 'views' },
+        { val: saves,       icon: SVG_BOOKMARK, cls: 'bookmark' }
+      ];
+      var html = '<div class="engagement">';
+      for (var i = 0; i < slots.length; i++) {
+        if (slots[i].val == null) continue;
+        html += '<span class="eng-btn ' + slots[i].cls + '">' + slots[i].icon + ' ' + fmtNum(slots[i].val) + '</span>';
+      }
+      html += '</div>';
+      return html;
+    }
+
+    // ── Posts: shared helpers ──
+
+    var PLATFORM_LABELS = { x: 'X', reddit: 'Reddit', youtube: 'YouTube', linkedin: 'LinkedIn', instagram: 'Instagram', tiktok: 'TikTok' };
+
+    // Relative time ("6h", "2d") from an ISO timestamp; falls back to a
+    // provided `time` string, then to ''. Computed at render so it always
+    // reads relative to "now".
+    function relTime(post) {
+      if (post.time) return post.time;
+      if (!post.timestamp) return '';
+      var t = Date.parse(post.timestamp);
+      if (isNaN(t)) return '';
+      var s = (Date.now() - t) / 1000;
+      if (s < 0) return 'now';
+      if (s < 60) return Math.floor(s) + 's';
+      if (s < 3600) return Math.floor(s / 60) + 'm';
+      if (s < 86400) return Math.floor(s / 3600) + 'h';
+      if (s < 604800) return Math.floor(s / 86400) + 'd';
+      if (s < 2629800) return Math.floor(s / 604800) + 'w';
+      return Math.floor(s / 2629800) + 'mo';
+    }
+
+    // A post is an outlier if it carries a z-score or beats its baseline.
+    // Returns {tier:1-4, label} or null. Tier drives badge color + flame count
+    // and the card's accent bar; it scales with z-score, or (lacking that) the
+    // percentage parsed from the performance string.
+    function outlierInfo(post) {
+      var z = post.zScore;
+      var up = post.performanceDirection === 'up';
+      if (z == null && !up) return null;
+      if (z != null) {
+        var tier = z >= 4 ? 4 : z >= 3 ? 3 : z >= 2 ? 2 : 1;
+        return { tier: tier, label: 'z ' + z.toFixed(1) };
+      }
+      var pct = 0;
+      if (post.performance) {
+        var m = post.performance.match(/(\d+(?:\.\d+)?)/);
+        if (m) pct = parseFloat(m[1]);
+      }
+      var ptier = pct >= 100 ? 4 : pct >= 50 ? 3 : pct >= 20 ? 2 : 1;
+      return { tier: ptier, label: post.performance || '+vs baseline' };
+    }
+
+    function creatorKey(post) { return (post.handle || post.displayName || '').trim(); }
+
+    function renderPostCard(post) {
+      var info = outlierInfo(post);
+      var obCls = info ? ' ob' + info.tier : '';
+      var recent = post.timestamp ? (Date.parse(post.timestamp) || 0) : 0;
+      var pop = typeof post.sortValue === 'number' ? post.sortValue : -1;
+
+      var html = '<div class="card' + obCls + '" data-href="' + esc(post.url) + '"'
+        + ' data-platform="' + esc(post.platform || '') + '"'
+        + ' data-creator="' + esc(creatorKey(post)) + '"'
+        + ' data-outlier="' + (info ? '1' : '0') + '"'
+        + ' data-popular="' + pop + '"'
+        + ' data-recent="' + recent + '">';
+      html += '<div class="card-header">';
+      html += '<div class="card-avatar avatar-' + esc(post.platform) + '"></div>';
+      html += '<div class="card-body">';
+
+      // Source line: display name (bold), optional secondary handle, time.
+      html += '<div class="card-source">';
+      var name = post.displayName || post.handle || '';
+      html += '<span class="handle">' + esc(name) + '</span>';
+      if (post.handle && post.displayName && post.handle !== post.displayName) {
+        html += ' <span class="sub-handle">' + esc(post.handle) + '</span>';
+      }
+      var rt = relTime(post);
+      if (rt) html += '<span class="dot">&middot;</span><span class="time">' + esc(rt) + '</span>';
+      html += '</div>';
+
+      html += '<div class="card-title">' + esc(post.title) + '</div>';
+      if (post.text) html += '<div class="card-text">' + esc(post.text) + '</div>';
+
+      // Engagement bar, or pre-formatted stats fallback.
+      if (post.engagement) html += renderEngagement(post.engagement);
+      else if (post.stats) html += '<div class="card-stats">' + esc(post.stats) + '</div>';
+
+      // Tags: outlier badge (intensity-scaled), platform link, bookmarked.
+      html += '<div class="tag-row">';
+      if (info) {
+        html += '<span class="outlier-badge ob' + info.tier + '">' + esc(info.label) + '</span>';
+      }
+      if (post.url) {
+        var host = '';
+        try { host = new URL(post.url).hostname.replace('www.', ''); } catch (e) { host = post.platform || 'link'; }
+        html += '<span class="tag tag-platform"><a href="' + esc(post.url) + '">' + esc(host) + '</a></span>';
+      }
+      if (post.bookmarked) html += '<span class="tag tag-bookmarked">Bookmarked</span>';
+      html += '</div>';
+
+      html += renderHook(post.hook);
+      if (post.why) html += '<div class="insight-block"><strong>Why it\'s here:</strong> ' + esc(post.why) + '</div>';
+      html += renderComments(post.comments);
+      html += '</div></div></div>';
+      return html;
+    }
+
+    function renderPosts(posts) {
+      if (!posts || !posts.length) {
+        return '<div class="empty-state">No posts yet. Add tracked accounts to <code>brand/tracked-accounts/</code> or run a scrape to populate this feed.</div>';
+      }
+      var html = '';
+      for (var i = 0; i < posts.length; i++) html += renderPostCard(posts[i]);
+      return html;
+    }
+
+    var SVG_CHEVRON = '<svg class="ft-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>';
+    var SVG_CHECK = '<svg class="ft-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>';
+
+    // One filter token ("Label │ Value ×") with its dropdown menu.
+    // opts: [{value, label}]. multi → checkbox semantics; single → radio.
+    function renderFilterToken(filter, label, opts, multi) {
+      var menu = '';
+      for (var i = 0; i < opts.length; i++) {
+        menu += '<div class="ft-opt" data-value="' + esc(opts[i].value) + '">'
+          + SVG_CHECK + '<span>' + esc(opts[i].label) + '</span></div>';
+      }
+      return '<div class="ft-wrap" data-filter="' + esc(filter) + '" data-multi="' + (multi ? '1' : '0') + '">'
+        + '<div class="filter-token">'
+        +   '<span class="ft-label">' + esc(label) + '</span>'
+        +   '<span class="ft-sep"></span>'
+        +   '<span class="ft-value">All</span>'
+        +   SVG_CHEVRON
+        +   '<button class="ft-clear" aria-label="Clear ' + esc(label) + ' filter">&times;</button>'
+        + '</div>'
+        + '<div class="ft-menu">' + menu + '</div>'
+        + '</div>';
+    }
+
+    // Build the sort + filter control bar from the posts actually present.
+    function renderControlBar(posts) {
+      // Distinct platforms (in a stable, known order) and creators.
+      var order = ['x', 'reddit', 'youtube', 'linkedin', 'instagram', 'tiktok'];
+      var present = {}, creators = {};
+      for (var i = 0; i < posts.length; i++) {
+        if (posts[i].platform) present[posts[i].platform] = true;
+        var k = creatorKey(posts[i]);
+        if (k) creators[k] = posts[i].displayName || posts[i].handle || k;
+      }
+      var platforms = order.filter(function (p) { return present[p]; });
+
+      var html = '<div class="control-bar" id="control-bar">';
+      html += '<div class="seg" id="sort-seg">'
+        + '<button class="seg-btn active" data-sort="popular">Popular</button>'
+        + '<button class="seg-btn" data-sort="recent">Recent</button>'
+        + '</div>';
+
+      // Creator filter (single-select) — the "grouping" control.
+      var keys = Object.keys(creators).sort(function (a, b) {
+        return creators[a].toLowerCase() < creators[b].toLowerCase() ? -1 : 1;
+      });
+      if (keys.length > 1) {
+        var creatorOpts = keys.map(function (k) { return { value: k, label: creators[k] }; });
+        html += renderFilterToken('creator', 'Creator', creatorOpts, false);
+      }
+
+      // Platform filter (multi-select).
+      if (platforms.length > 1) {
+        var platOpts = platforms.map(function (p) { return { value: p, label: PLATFORM_LABELS[p] || p }; });
+        html += renderFilterToken('platform', 'Platform', platOpts, true);
+      }
+
+      html += '<button class="ctrl-toggle" id="outlier-toggle" aria-pressed="false">Outliers</button>';
+      html += '<span class="ctrl-spacer"></span>';
+      html += '<span class="ctrl-count" id="ctrl-count"></span>';
+      html += '</div>';
+      return html;
+    }
+
+    function renderIdeas(ideas) {
+      if (!ideas) return '<div class="empty-state">No ideas generated.</div>';
+      var html = '';
+
+      // Audience requests banner
+      if (ideas.audienceRequests && ideas.audienceRequests.length) {
+        html += '<div class="audience-highlight">';
+        html += '<div class="audience-highlight-title">Your Audience Is Asking For</div>';
+        html += renderComments(ideas.audienceRequests);
+        html += '</div>';
+      }
+
+      // Idea cards
+      if (ideas.items) {
+        for (var i = 0; i < ideas.items.length; i++) {
+          var idea = ideas.items[i];
+          html += '<div class="picks-card"' + (idea.sourceUrl ? ' data-href="' + esc(idea.sourceUrl) + '"' : '') + '>';
+          html += '<div class="picks-inner picks-toggle" onclick="this.closest(\'.picks-card\').classList.toggle(\'open\')">';
+          html += '<div class="picks-badge">&#9733; Idea ' + (i + 1) + '</div>';
+          html += '<div class="picks-title">' + esc(idea.title) + '</div>';
+          html += '<div class="picks-concept">' + esc(idea.concept) + '</div>';
+          if (idea.funnel) {
+            html += '<div class="tag-row"><span class="tag tag-' + esc(idea.funnel) + '">' + esc(idea.funnel.toUpperCase()) + '</span></div>';
+          }
+          html += '<div class="expand-hint">Click to expand full brief &darr;</div>';
+          html += '</div>';
+
+          // Expandable brief
+          html += '<div class="picks-expand"><div class="picks-detail" style="padding: 0 20px 18px;">';
+          if (idea.pastCoverage) {
+            html += '<div class="past-coverage"><strong>Related:</strong> ' + esc(idea.pastCoverage) + '</div>';
+          }
+          var b = idea.brief;
+          if (b) {
+            if (b.whyNow) {
+              html += '<div class="picks-detail-item"><div class="picks-detail-label">Why Now</div>';
+              html += '<div class="picks-detail-text">' + esc(b.whyNow) + '</div></div>';
+            }
+            if (b.audienceAsking) {
+              html += '<div class="picks-detail-item"><div class="picks-detail-label">What the Audience Is Asking For</div>';
+              html += '<div class="picks-detail-text">';
+              html += renderComments(b.audienceAsking.comments);
+              if (b.audienceAsking.text) html += '<div style="margin-top:8px">' + esc(b.audienceAsking.text) + '</div>';
+              html += '</div></div>';
+            }
+            if (b.differentiator) {
+              html += '<div class="picks-detail-item"><div class="picks-detail-label">Differentiator</div>';
+              html += '<div class="picks-detail-text">' + esc(b.differentiator) + '</div></div>';
+            }
+            if (b.suggestedHook) {
+              html += '<div class="picks-detail-item"><div class="picks-detail-label">Suggested Hook</div>';
+              html += '<div class="picks-detail-text picks-hook">' + esc(b.suggestedHook) + '</div></div>';
+            }
+            if (b.howToAction) {
+              html += '<div class="picks-detail-item"><div class="picks-detail-label">How to Action This</div>';
+              html += '<div class="picks-detail-text">' + esc(b.howToAction) + '</div></div>';
+            }
+            if (b.repurposeAs && b.repurposeAs.length) {
+              html += '<div class="picks-detail-item"><div class="picks-detail-label">Repurpose As</div>';
+              html += '<div class="picks-repurpose">';
+              for (var r = 0; r < b.repurposeAs.length; r++) {
+                html += '<span class="repurpose-tag">' + esc(b.repurposeAs[r]) + '</span>';
+              }
+              html += '</div></div>';
+            }
+          }
+          html += '</div></div></div>';
+        }
+      }
+
+      // Patterns
+      if (ideas.patterns && ideas.patterns.length) {
+        html += '<div class="patterns-section">';
+        html += '<div class="patterns-title">&#8594; Patterns</div>';
+        for (var j = 0; j < ideas.patterns.length; j++) {
+          html += '<div class="pattern-item"><span class="pattern-bullet">&bull;</span><span>' + boldMd(ideas.patterns[j]) + '</span></div>';
+        }
+        html += '</div>';
+      }
+
+      return html;
+    }
+
+    // ── Main Render ──
+
+    // Resolve the flat posts list. Prefer the current `posts[]` schema; fall
+    // back to merging legacy `competitors[]` + `topPerformers[]` so older
+    // feed-data.json files still render.
+    function collectPosts(d) {
+      if (Array.isArray(d.posts)) return d.posts;
+      var out = [];
+      function push(p, extra) {
+        out.push({
+          title: p.title, text: p.text, url: p.url,
+          handle: extra.handle, displayName: extra.displayName, platform: extra.platform,
+          timestamp: p.timestamp || null, sortValue: p.sortValue, time: p.time || null,
+          engagement: p.engagement || null, stats: p.stats || null,
+          zScore: p.zScore != null ? p.zScore : null,
+          performance: p.performance || null, performanceDirection: p.performanceDirection || null,
+          why: p.why || null, hook: p.hook || null,
+          bookmarked: !!p.bookmarked, comments: p.comments || []
+        });
+      }
+      (d.competitors || []).forEach(function (g) {
+        (g.posts || []).forEach(function (p) {
+          push(p, { handle: g.handle, displayName: g.displayName, platform: g.platform });
+        });
+      });
+      (d.topPerformers || []).forEach(function (p) {
+        push(p, { handle: p.handle, displayName: p.displayName || p.handle, platform: p.platform });
+      });
+      return out;
+    }
+
+    function renderFeed() {
+      var d = typeof FEED_DATA !== 'undefined' ? FEED_DATA : null;
+      if (!d) {
+        document.getElementById('feed-root').innerHTML = '<div class="empty-state">No feed data embedded. Generate this page with generate_feed.py.</div>';
+        return;
+      }
+
+      var m = d.meta || {};
+      document.title = 'For You \u2014 ' + (m.date || '');
+
+      var posts = collectPosts(d);
+      var postsCount = posts.length;
+      var ideasCount = d.ideas && d.ideas.items ? d.ideas.items.length : 0;
+
+      var shell = document.getElementById('feed-root');
+      shell.innerHTML =
+        '<div class="top-bar">'
+        + '<div class="top-bar-title">'
+        + '<h1>For You</h1>'
+        + '<div class="top-bar-subtitle">' + esc(m.subtitle || '') + '</div>'
+        + '</div>'
+        + '<nav class="tab-nav">'
+        + '<button class="tab-btn active" data-tab="posts">Posts' + (postsCount ? ' (' + postsCount + ')' : '') + '</button>'
+        + '<button class="tab-btn" data-tab="ideas">Ideas' + (ideasCount ? ' (' + ideasCount + ')' : '') + '</button>'
+        + '</nav>'
+        + (postsCount ? renderControlBar(posts) : '')
+        + '</div>'
+        + '<div class="feed-section active" data-section="posts">'
+        +   '<div id="posts-list">' + renderPosts(posts) + '</div>'
+        +   '<div class="empty-state" id="posts-empty" style="display:none">No posts match these filters.</div>'
+        + '</div>'
+        + '<div class="feed-section" data-section="ideas">' + renderIdeas(d.ideas) + '</div>'
+        + '<div class="feed-footer">' + esc(m.footer || '') + '</div>';
+
+      initInteractions();
+      setupPostControls();
+    }
+
+    // ── Interactions ──
+
+    function initInteractions() {
+      var controlBar = document.getElementById('control-bar');
+
+      // Tab switching (control bar belongs to the Posts tab only)
+      document.querySelectorAll('.tab-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+          document.querySelectorAll('.feed-section').forEach(function(s) { s.classList.remove('active'); });
+          btn.classList.add('active');
+          document.querySelector('[data-section="' + btn.dataset.tab + '"]').classList.add('active');
+          if (controlBar) controlBar.style.display = btn.dataset.tab === 'posts' ? '' : 'none';
+        });
+      });
+
+      // Click-to-navigate on post cards
+      document.querySelectorAll('.card[data-href]').forEach(function(el) {
+        el.addEventListener('click', function(e) {
+          window.open(el.dataset.href, '_blank');
+        });
+      });
+
+      // Ideas cards: title click navigates, rest toggles
+      document.querySelectorAll('.picks-card[data-href] .picks-title').forEach(function(title) {
+        title.style.cursor = 'pointer';
+        title.style.textDecoration = 'underline';
+        title.style.textDecorationColor = 'var(--accent-light)';
+        title.addEventListener('click', function(e) {
+          e.stopPropagation();
+          window.open(title.closest('.picks-card').dataset.href, '_blank');
+        });
+      });
+
+      // Print: expand all picks
+      window.addEventListener('beforeprint', function() {
+        document.querySelectorAll('.picks-card').forEach(function(c) { c.classList.add('open'); });
+      });
+    }
+
+    // ── Sort + filter (operate on already-rendered cards so feedback controls
+    //    stay attached: sorting reorders DOM nodes, filtering toggles display) ──
+
+    function setupPostControls() {
+      var list = document.getElementById('posts-list');
+      if (!list) return;
+      var cards = Array.prototype.slice.call(list.querySelectorAll('.card'));
+      if (!cards.length) return;
+
+      // creator: '' = all. platform: null = all; else a set of selected values.
+      var state = { sort: 'popular', creator: '', platforms: null, outliersOnly: false };
+
+      function apply() {
+        // Sort: reorder nodes (feedback bars ride along inside each card).
+        var key = state.sort === 'recent' ? 'recent' : 'popular';
+        cards.sort(function (a, b) {
+          return (parseFloat(b.dataset[key]) || 0) - (parseFloat(a.dataset[key]) || 0);
+        });
+        cards.forEach(function (c) { list.appendChild(c); });
+
+        // Filter (AND). null platform set = no platform filter (show all).
+        var visible = 0;
+        cards.forEach(function (c) {
+          var ok = true;
+          if (state.platforms && !state.platforms[c.dataset.platform]) ok = false;
+          if (state.creator && c.dataset.creator !== state.creator) ok = false;
+          if (state.outliersOnly && c.dataset.outlier !== '1') ok = false;
+          c.style.display = ok ? '' : 'none';
+          if (ok) visible++;
+        });
+
+        var countEl = document.getElementById('ctrl-count');
+        if (countEl) countEl.textContent = visible + ' post' + (visible === 1 ? '' : 's');
+        var empty = document.getElementById('posts-empty');
+        if (empty) empty.style.display = visible ? 'none' : 'block';
+      }
+
+      // Reflect a token's current selection into its label/value/×.
+      function refreshToken(wrap) {
+        var filter = wrap.dataset.filter;
+        var token = wrap.querySelector('.filter-token');
+        var valEl = wrap.querySelector('.ft-value');
+        var opts = wrap.querySelectorAll('.ft-opt');
+        var isSet = false, text = 'All';
+
+        if (filter === 'creator') {
+          isSet = !!state.creator;
+          opts.forEach(function (o) {
+            var on = o.dataset.value === state.creator;
+            o.classList.toggle('selected', on);
+            if (on) text = o.textContent.trim();
+          });
+        } else if (filter === 'platform') {
+          var sel = state.platforms;
+          isSet = !!sel;
+          var names = [];
+          opts.forEach(function (o) {
+            var on = sel && sel[o.dataset.value];
+            o.classList.toggle('selected', !!on);
+            if (on) names.push(o.textContent.trim());
+          });
+          if (sel) text = names.length === 1 ? names[0] : names.length + ' platforms';
+        }
+        valEl.textContent = text;
+        token.classList.toggle('is-set', isSet);
+      }
+
+      function closeMenus(except) {
+        document.querySelectorAll('.ft-wrap.open').forEach(function (w) {
+          if (w !== except) w.classList.remove('open');
+        });
+      }
+
+      // Sort segmented control
+      document.querySelectorAll('#sort-seg .seg-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          document.querySelectorAll('#sort-seg .seg-btn').forEach(function (b) { b.classList.remove('active'); });
+          btn.classList.add('active');
+          state.sort = btn.dataset.sort;
+          apply();
+        });
+      });
+
+      // Filter tokens (custom dropdowns)
+      document.querySelectorAll('.ft-wrap').forEach(function (wrap) {
+        var token = wrap.querySelector('.filter-token');
+        var filter = wrap.dataset.filter;
+        var multi = wrap.dataset.multi === '1';
+
+        // Open/close menu (ignore clicks on the clear ×).
+        token.addEventListener('click', function (e) {
+          if (e.target.closest('.ft-clear')) return;
+          var willOpen = !wrap.classList.contains('open');
+          closeMenus(wrap);
+          wrap.classList.toggle('open', willOpen);
+        });
+
+        // Clear button → reset this filter.
+        wrap.querySelector('.ft-clear').addEventListener('click', function (e) {
+          e.stopPropagation();
+          if (filter === 'creator') state.creator = '';
+          else if (filter === 'platform') state.platforms = null;
+          refreshToken(wrap);
+          apply();
+        });
+
+        // Option clicks.
+        wrap.querySelectorAll('.ft-opt').forEach(function (opt) {
+          opt.addEventListener('click', function () {
+            var v = opt.dataset.value;
+            if (filter === 'creator') {
+              state.creator = (state.creator === v) ? '' : v;  // toggle off if re-picked
+              wrap.classList.remove('open');
+            } else if (filter === 'platform') {
+              // Start from "all selected" the first time one is toggled.
+              if (!state.platforms) {
+                state.platforms = {};
+                wrap.querySelectorAll('.ft-opt').forEach(function (o) { state.platforms[o.dataset.value] = true; });
+              }
+              if (state.platforms[v]) delete state.platforms[v];
+              else state.platforms[v] = true;
+              var n = Object.keys(state.platforms).length;
+              var total = wrap.querySelectorAll('.ft-opt').length;
+              if (n === 0 || n === total) state.platforms = null;  // none or all → no filter
+            }
+            refreshToken(wrap);
+            apply();
+          });
+        });
+
+        refreshToken(wrap);
+      });
+
+      // Outliers toggle
+      var outlierBtn = document.getElementById('outlier-toggle');
+      if (outlierBtn) outlierBtn.addEventListener('click', function () {
+        state.outliersOnly = !state.outliersOnly;
+        outlierBtn.classList.toggle('active', state.outliersOnly);
+        outlierBtn.setAttribute('aria-pressed', state.outliersOnly ? 'true' : 'false');
+        apply();
+      });
+
+      // Close menus on outside click.
+      document.addEventListener('click', function (e) {
+        if (!e.target.closest('.ft-wrap')) closeMenus(null);
+      });
+
+      apply();  // initial sort (Popular) + counts
+    }
+
+    // ── Boot ──
+    renderFeed();
+    if (window.__initFeedback) window.__initFeedback();
+  </script>
+
+  <!-- ── Feedback layer (additive; injected by generate_feed.py via FEEDBACK_MODE) ── -->
+  <style>
+    .fb {
+      margin-top: 12px; padding-top: 11px; border-top: 1px solid var(--border-light);
+      display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+    }
+    /* Inside an Ideas card the bar is full-width, so pad it to the card gutters. */
+    .fb-picks { margin-top: 0; padding: 12px 20px 16px; }
+    .fb-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      cursor: pointer; border: 1px solid var(--border); background: var(--surface);
+      border-radius: 999px; padding: 6px 13px; font-size: 12.5px; font-weight: 500;
+      line-height: 1; color: var(--text-secondary); font-family: var(--body-font);
+      transition: background .12s, border-color .12s, color .12s; white-space: nowrap;
+    }
+    .fb-btn svg {
+      width: 15px; height: 15px; flex-shrink: 0; fill: none;
+      stroke: currentColor; stroke-width: 1.9;
+      stroke-linecap: round; stroke-linejoin: round;
+    }
+    .fb-up:hover, .fb-up.active-up {
+      background: var(--positive-light); border-color: var(--positive); color: var(--positive);
+    }
+    .fb-down:hover, .fb-down.active-down,
+    .fb-note-toggle:hover, .fb-note-toggle.active {
+      background: var(--accent-light); border-color: var(--accent); color: var(--accent);
+    }
+    .fb-note {
+      width: 100%; margin-top: 8px; border: 1px solid var(--border); border-radius: 10px;
+      padding: 9px 12px; font-family: var(--body-font); font-size: 13px; line-height: 1.5;
+      color: var(--text); background: var(--surface); resize: vertical;
+      min-height: 40px; display: none;
+    }
+    .fb-note.show { display: block; }
+    .fb-note:focus { outline: none; border-color: var(--accent); }
+    @media (max-width: 640px) { .fb-picks { padding: 10px 16px 14px; } }
+    .fb-bar {
+      position: fixed; bottom: 18px; right: 18px; z-index: 50;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      box-shadow: 0 6px 24px rgba(0,0,0,.10); padding: 10px 14px; display: flex;
+      align-items: center; gap: 12px; font-size: 13px; color: var(--text-secondary);
+    }
+    .fb-bar button {
+      cursor: pointer; border: none; border-radius: 8px; padding: 7px 14px;
+      font-family: var(--body-font); font-size: 13px; font-weight: 600;
+      background: var(--picks-gradient); color: #fff;
+    }
+    .fb-bar .fb-count { font-variant-numeric: tabular-nums; }
+    .fb-saved { color: var(--positive); }
+    @media print { .fb, .fb-bar { display: none !important; } }
+  </style>
+  <script>
+    // Reaction icons (stroke style, sized to match the engagement row above).
+    var FB_ICON_UP = '<svg viewBox="0 0 24 24"><path d="M7 10v11M2 13a2 2 0 0 1 2-2h3v10H4a2 2 0 0 1-2-2v-6zM7 11l4.2-7.6a1.7 1.7 0 0 1 3.1 1.3l-1 4.3H20a2 2 0 0 1 2 2.4l-1.3 6A2 2 0 0 1 18.7 21H7"/></svg>';
+    var FB_ICON_DOWN = '<svg viewBox="0 0 24 24"><path d="M17 14V3M22 11a2 2 0 0 1-2 2h-3V3h3a2 2 0 0 1 2 2v6zM17 13l-4.2 7.6a1.7 1.7 0 0 1-3.1-1.3l1-4.3H4a2 2 0 0 1-2-2.4l1.3-6A2 2 0 0 1 5.3 3H17"/></svg>';
+    var FB_ICON_NOTE = '<svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.5 8.5 0 0 1-3.8-.9L3 20.5l1.5-5.2A8.5 8.5 0 1 1 21 11.5z"/></svg>';
+
+    // Post-render feedback enhancer. Runs after the main renderer so the
+    // original card markup is untouched — we just append controls and persist
+    // reactions to feedback.json (server mode) or a downloadable file (static).
+    window.__initFeedback = function () {
+      var mode = (typeof FEEDBACK_MODE !== 'undefined') ? FEEDBACK_MODE : null;
+      if (!mode) return;
+      var state = (typeof FEEDBACK_STATE !== 'undefined' && FEEDBACK_STATE) ? FEEDBACK_STATE : {};
+      var dirty = false;
+
+      function fbEsc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+      function idFor(el, tab, label) {
+        // Stable id: prefer the post URL, else tab + label text.
+        var href = el.getAttribute('data-href');
+        return (tab + '::' + (href || label || '')).slice(0, 400);
+      }
+
+      function attach(el, tab, label) {
+        if (el.dataset.fbReady) return;
+        el.dataset.fbReady = '1';
+        var id = idFor(el, tab, label);
+        var existing = state[id] || {};
+
+        // Append into the card's content container so the controls line up with
+        // the text/engagement above them (not the card's outer padding edge).
+        var host = el, picks = el.classList.contains('picks-card');
+        if (el.classList.contains('card')) host = el.querySelector('.card-body') || el;
+        var bar = document.createElement('div');
+        bar.className = picks ? 'fb fb-picks' : 'fb';
+        bar.innerHTML =
+          '<button class="fb-btn fb-up' + (existing.rating === 'up' ? ' active-up' : '') + '" title="More like this">' + FB_ICON_UP + '<span>More like this</span></button>'
+          + '<button class="fb-btn fb-down' + (existing.rating === 'down' ? ' active-down' : '') + '" title="Less like this">' + FB_ICON_DOWN + '<span>Less</span></button>'
+          + '<button class="fb-btn fb-note-toggle' + (existing.note ? ' active' : '') + '" title="Add a note">' + FB_ICON_NOTE + '<span>Note</span></button>'
+          + '<textarea class="fb-note' + (existing.note ? ' show' : '') + '" placeholder="What worked or didn\'t? (saved automatically)">' + fbEsc(existing.note) + '</textarea>';
+        // Stop card-level navigation when interacting with feedback controls.
+        bar.addEventListener('click', function (e) { e.stopPropagation(); });
+        host.appendChild(bar);
+
+        var up = bar.querySelector('.fb-up'), down = bar.querySelector('.fb-down');
+        var note = bar.querySelector('.fb-note'), toggle = bar.querySelector('.fb-note-toggle');
+
+        function record() {
+          state[id] = {
+            item_id: id, tab: tab, label: label,
+            rating: up.classList.contains('active-up') ? 'up' : (down.classList.contains('active-down') ? 'down' : null),
+            note: note.value.trim()
+          };
+          toggle.classList.toggle('active', !!note.value.trim());
+          dirty = true;
+          if (mode === 'server') scheduleSave();
+          updateCount();
+        }
+        up.addEventListener('click', function () {
+          down.classList.remove('active-down');
+          up.classList.toggle('active-up'); record();
+        });
+        down.addEventListener('click', function () {
+          up.classList.remove('active-up');
+          down.classList.toggle('active-down'); record();
+        });
+        toggle.addEventListener('click', function () { note.classList.toggle('show'); if (note.classList.contains('show')) note.focus(); });
+        note.addEventListener('input', record);
+      }
+
+      // Walk every card across both tabs.
+      document.querySelectorAll('.feed-section[data-section="posts"] .card').forEach(function (el) {
+        var t = el.querySelector('.card-title'); attach(el, 'posts', t ? t.textContent : '');
+      });
+      document.querySelectorAll('.feed-section[data-section="ideas"] .picks-card').forEach(function (el) {
+        var t = el.querySelector('.picks-title'); attach(el, 'ideas', t ? t.textContent : '');
+      });
+
+      // Floating save/status bar.
+      var bar = document.createElement('div');
+      bar.className = 'fb-bar';
+      bar.innerHTML = '<span class="fb-count"></span>'
+        + (mode === 'server' ? '<span class="fb-saved" style="display:none">Saved ✓</span>'
+                             : '<button class="fb-export">Download feedback</button>');
+      document.body.appendChild(bar);
+      var countEl = bar.querySelector('.fb-count');
+      function reactions() { return Object.keys(state).map(function (k) { return state[k]; }).filter(function (r) { return r.rating || r.note; }); }
+      function updateCount() {
+        var n = reactions().length;
+        countEl.textContent = n ? (n + ' reaction' + (n === 1 ? '' : 's')) : 'React to tune future feeds';
+      }
+      updateCount();
+
+      function payload() { return { reviews: reactions() }; }
+
+      var saveTimer = null;
+      function scheduleSave() {
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(function () {
+          fetch('/api/feedback', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload())
+          }).then(function () {
+            var s = bar.querySelector('.fb-saved');
+            if (s) { s.style.display = 'inline'; setTimeout(function () { s.style.display = 'none'; }, 1200); }
+          }).catch(function () {});
+        }, 600);
+      }
+
+      if (mode === 'static') {
+        bar.querySelector('.fb-export').addEventListener('click', function () {
+          var blob = new Blob([JSON.stringify(payload(), null, 2)], { type: 'application/json' });
+          var a = document.createElement('a');
+          a.href = URL.createObjectURL(blob); a.download = 'feedback.json';
+          document.body.appendChild(a); a.click(); a.remove();
+        });
+      }
+    };
+
+    // The boot call in the render script runs before this block defines
+    // __initFeedback, so invoke it here now that the definition exists.
+    // (Idempotent: attach() skips cards that already have a .fb bar.)
+    window.__initFeedback();
+  </script>
+</body>
+</html>

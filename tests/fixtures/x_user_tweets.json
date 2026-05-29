@@ -1,0 +1,16 @@
+{
+  "tweets": [
+    {
+      "url": "https://x.com/acme/status/100",
+      "legacy": {
+        "full_text": "Shipping claude code agents at scale",
+        "created_at": "Wed Mar 20 12:34:56 +0000 2026",
+        "favorite_count": 100,
+        "retweet_count": 10,
+        "reply_count": 5,
+        "bookmark_count": 8
+      },
+      "views": {"count": "5000"}
+    }
+  ]
+}

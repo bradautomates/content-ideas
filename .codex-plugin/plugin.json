@@ -1,0 +1,37 @@
+{
+  "name": "content-ideas",
+  "version": "2.2.0",
+  "description": "Track competitors across X, Instagram, TikTok, and YouTube. See what they're posting, what's performing, and get actionable content ideas backed by real engagement data. Ships the content-ideas skill.",
+  "author": {
+    "name": "Bradley Bonanno"
+  },
+  "license": "MIT",
+  "keywords": [
+    "content",
+    "creators",
+    "competitors",
+    "social-media",
+    "x",
+    "instagram",
+    "tiktok",
+    "youtube",
+    "trends",
+    "ideas",
+    "for-you"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Content Ideas",
+    "shortDescription": "A daily For You feed of competitor activity and content ideas",
+    "longDescription": "Track competitors across X, Instagram, TikTok, and YouTube. See what they're posting, what's performing, and get actionable content ideas backed by real engagement data. Ships the content-ideas skill.",
+    "developerName": "Bradley Bonanno",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": "Use content-ideas to scrape my tracked competitors and build today's For You feed of content ideas.",
+    "brandColor": "#7C3AED"
+  }
+}

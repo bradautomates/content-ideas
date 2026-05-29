@@ -1,0 +1,16 @@
+{
+  "videos": [
+    {
+      "title": "Build an MCP server with Claude Code",
+      "url": "https://www.youtube.com/watch?v=xyz",
+      "publishDate": "2026-03-20T06:30:22-07:00",
+      "publishedTime": "2026-03-25T00:00:00Z",
+      "publishedTimeText": "2 months ago",
+      "viewCountInt": 12000,
+      "likeCountInt": 300,
+      "commentCountInt": 25,
+      "lengthSeconds": 900,
+      "description": "Full tutorial"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+[project]
+name = "content-ideas"
+version = "2.2.0"
+description = "content-ideas skill — competitor scraping + For You feed generation"
+readme = "README.md"
+requires-python = ">=3.10"
+# Runtime is intentionally dependency-free (stdlib only: urllib, json, ...).
+dependencies = []
+
+[dependency-groups]
+dev = [
+  "pytest>=8,<9",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = [
+  "-q",
+  "--tb=short",
+]

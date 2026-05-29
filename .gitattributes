@@ -1,0 +1,28 @@
+# Exclude non-runtime files from `git archive` output.
+#
+# Claude Code's `/plugin install` and Codex's plugin install both fetch this
+# repository's git archive as their payload, so keep everything they need —
+# skills/, .claude-plugin/, .codex-plugin/, commands/, hooks/, AGENTS.md,
+# CLAUDE.md — OUT of the export-ignore list below. Only strip dev/test/example
+# weight that no host needs at runtime.
+#
+# scripts/build-skill.sh produces the claude.ai-upload .skill bundle from the
+# skills/content-ideas subtree; its bundle-specific strips live in that script.
+
+# Canonical skill-packaging excludes
+__pycache__/   export-ignore
+*.pyc          export-ignore
+.DS_Store      export-ignore
+
+# Dev, test, and example weight — not needed at skill runtime
+tests/         export-ignore
+examples/      export-ignore
+dist/          export-ignore
+uv.lock        export-ignore
+
+# CI workflows — repo-only
+.github/       export-ignore
+
+# Build/config files themselves
+.gitignore     export-ignore
+.gitattributes export-ignore

@@ -1,0 +1,29 @@
+# Build output
+dist/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Test / coverage artifacts
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Secrets (credentials normally live in ~/.config/content/.env, never the repo)
+.env
+.env.*
+
+# Runtime / dev artifacts
+scrape_err.log
+*.log
+
+# Feed output (normally written under $CONTENT_HOME, ignored here as a safety net)
+for-you.html
+feed-data.json
+feedback.json
+
+# OS
+.DS_Store
