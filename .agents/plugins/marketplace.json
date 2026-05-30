@@ -1,0 +1,20 @@
+{
+  "name": "content-ideas",
+  "interface": {
+    "displayName": "Content Ideas"
+  },
+  "plugins": [
+    {
+      "name": "content-ideas",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_FIRST_USE"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
