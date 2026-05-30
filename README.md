@@ -6,18 +6,19 @@
 
 I built this for my own YouTube channel and used it to grow from 700 to over 10,000 subscribers in three months. It's not just for YouTubers — it's for anyone who has to keep producing content: creators, businesses and marketers, personal brands, founders, agencies, newsletter and podcast writers. If your week starts with "what should I make next?", this skill is for you.
 
-Claude Code:
+Claude Code (recommended — auto-updates via marketplace):
 ```
 /plugin marketplace add bradautomates/content-ideas
 /plugin install content-ideas@content-ideas
 ```
 
-claude.ai (web): [download `content-ideas.skill`](https://github.com/bradautomates/content-ideas/releases/latest) and drop it into Settings → Capabilities → Skills.
-
-Codex / generic skills:
+Codex, Cursor, Copilot, Gemini CLI, or any of 50+ [Agent Skills](https://github.com/vercel-labs/skills) hosts:
 ```bash
-git clone https://github.com/bradautomates/content-ideas.git ~/.codex/skills/content-ideas
+npx skills add bradautomates/content-ideas -g
 ```
+(`-g` installs globally for your user, available across all projects. Drop it to scope per-project.)
+
+More install options (claude.ai web, manual) in the [Install](#install) section below.
 
 One [ScrapeCreators](https://scrapecreators.com) API key covers all four platforms — X, Instagram, TikTok, and YouTube (including transcripts). 100 free calls, no card. Nothing else to install: the runtime is pure Python stdlib.
 
@@ -94,8 +95,8 @@ React to any item and the reaction is saved to `$CONTENT_HOME/research/{date}/fe
 | Surface | Install |
 |---------|---------|
 | **Claude Code** | `/plugin marketplace add bradautomates/content-ideas` then `/plugin install content-ideas@content-ideas` |
+| **Codex, Cursor, Copilot, Gemini CLI, +50 more** | `npx skills add bradautomates/content-ideas -g` |
 | **claude.ai** (web) | [Download `content-ideas.skill`](https://github.com/bradautomates/content-ideas/releases/latest) → Settings → Capabilities → Skills → `+` |
-| **Codex** | `git clone https://github.com/bradautomates/content-ideas.git ~/.codex/skills/content-ideas` |
 | **Manual / dev** | `git clone https://github.com/bradautomates/content-ideas.git ~/.claude/skills/content-ideas` |
 
 ### Claude Code
@@ -115,13 +116,21 @@ Update later with `/plugin update content-ideas@content-ideas`.
 
 Enable "Code execution and file creation" under Capabilities first — the skill shells out to Python, so it won't run without it.
 
-### Codex
+### Codex, Cursor, Copilot, Gemini CLI, and 50+ other hosts
+
+The [Agent Skills](https://github.com/vercel-labs/skills) CLI installs the skill into whatever agents it detects:
 
 ```bash
-git clone https://github.com/bradautomates/content-ideas.git ~/.codex/skills/content-ideas
+npx skills add bradautomates/content-ideas -g
 ```
 
-`.codex-plugin/plugin.json` (`"skills": "./skills/"`) and `AGENTS.md` make the skill discoverable; `SKILL.md` resolves its own scripts from the Codex cache or the clone.
+`-g` installs globally for your user (`~/.codex/skills`, `~/.cursor/skills`, etc.); drop it to install into the current project instead. Useful flags:
+
+- `-a, --agent <names…>` — target specific hosts, e.g. `-a codex -a cursor`
+- `-l, --list` — list the skills in this repo without installing
+- `--copy` — copy files instead of symlinking (for filesystems without symlink support)
+
+The CLI discovers the skill from `SKILL.md` and honors `.codex-plugin/plugin.json` (`"skills": "./skills/"`) and `AGENTS.md`; `SKILL.md` resolves its own scripts from the host cache or the clone.
 
 ## First run
 
