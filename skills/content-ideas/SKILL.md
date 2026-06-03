@@ -64,13 +64,64 @@ scripts you'll call are `$SKILL_DIR/scripts/scrape.py` and
 `$SKILL_DIR/scripts/generate_feed.py`. The renderer template is
 `$SKILL_DIR/assets/for-you-template.html` (the generator finds it automatically).
 
+## Resolve the project (multi-project mode)
+
+This skill supports two operating modes:
+
+- **Single-project** (default, original behavior) — one `brand/`, one
+  `~/.config/content/.env`. Everything lives under one `CONTENT_HOME`.
+- **Multi-project** — multiple isolated projects, each with its own
+  brand/, tracked accounts, research history, and API key. Selected via
+  a slug arg: `/content-ideas <slug>` or `/content-ideas` (defaults to
+  last-used slug).
+
+Detect mode by checking `$ARGUMENTS`:
+
+1. **Parse the first token** of `$ARGUMENTS`. If it's a single identifier
+   (alphanumeric, dashes, underscores — no spaces, no quotes, no JSON
+   braces), treat it as a candidate slug. Pop it from arguments before
+   passing the remainder downstream.
+2. **If no slug given, look for** `~/.config/content/last-project` and
+   read its contents as the slug (this is how bare `/content-ideas`
+   defaults to the user's last project).
+3. **If neither yields a slug**, you're in single-project mode — skip
+   straight to "Resolve the content home" below.
+
+When you resolve a slug, **announce it explicitly to the user**:
+`Using project: <slug>` so a wrong-default catches their eye immediately.
+A bare-call default that doesn't match the user's intent is the riskiest
+UX failure here.
+
+Then locate the wrapper that drives multi-project routing. Check these in
+order:
+
+1. `$CONTENT_IDEAS_HOME/bin/scrape.sh` (if `CONTENT_IDEAS_HOME` is set)
+2. `$HOME/ObsidianVaults/mise/content-ideas/bin/scrape.sh` (vault convention)
+3. `$HOME/Documents/Content/bin/scrape.sh` (Content-dir convention)
+4. `$CONTENT_HOME/bin/scrape.sh` (single-project wrapper, if `CONTENT_HOME` is set)
+
+The first match wins. Capture its directory as `CI_ROOT` (= `$(dirname
+$(dirname <wrapper>))`). Per-project state then lives at:
+
+```
+CONTENT_HOME = $CI_ROOT/projects/<slug>/
+KEY_FILE     = ~/.config/content/<slug>.env
+```
+
+If no wrapper exists, you're in single-project mode regardless of slug —
+warn the user and fall back to the single-project flow.
+
 ## Resolve the content home
 
-All persistent files this skill reads and writes — the `brand/` profile and the
-dated `research/` runs — live under one stable base, **never** the current
-working directory. The skill runs daily and is invoked from anywhere, so the
-base must be the same every time or it loses the profile and the run history.
-Resolve it once and capture the concrete path:
+(Multi-project mode resolved this in the previous section. Skip ahead to
+Step 0 unless you're falling back to single-project.)
+
+In **single-project mode**, all persistent files this skill reads and
+writes — the `brand/` profile and the dated `research/` runs — live under
+one stable base, **never** the current working directory. The skill runs
+daily and is invoked from anywhere, so the base must be the same every
+time or it loses the profile and the run history. Resolve it once and
+capture the concrete path:
 
 ```bash
 CONTENT_HOME="${CONTENT_HOME:-$HOME/Documents/Content}"
@@ -83,16 +134,27 @@ Throughout this guide every `brand/...` and `research/...` path is relative to
 **Use the printed absolute path for every Read/Write of those files** — the
 file tools don't expand shell variables, so writing a bare `brand/profile.md`
 would land it in the wrong directory. (Credentials stay separate, in
-`~/.config/content/.env`.) The scrape/generate scripts read `CONTENT_HOME`
+`~/.config/content/.env` for single-project, or `~/.config/content/<slug>.env`
+for multi-project.) The scrape/generate scripts read `CONTENT_HOME`
 themselves, so a relative `research/{today}` passed to them resolves here too.
 
 ---
 
-## Step 0: First-run setup
+## Step 0: First-run setup (or new-project setup)
 
-**Run this before anything else, even if the user gave a topic.** Detect first
-run by checking whether `~/.config/content/.env` exists and contains
-`SETUP_COMPLETE=true`. Check silently. If it's already set up, skip to Step 1.
+**Run this before anything else, even if the user gave a topic.**
+
+- **Single-project mode:** Detect first run by checking whether
+  `~/.config/content/.env` exists and contains `SETUP_COMPLETE=true`.
+  Check silently. If it's already set up, skip to Step 1.
+- **Multi-project mode:** Check whether `$CONTENT_HOME` (the per-project
+  dir, resolved above as `$CI_ROOT/projects/<slug>/`) exists. If it does
+  AND `$KEY_FILE` exists, the project is set up — skip to Step 1.
+  Otherwise this is a **new-project setup** — confirm the slug with the
+  user via `AskUserQuestion` before writing anything (chance to back out
+  or retype), then run the setup steps below. All file writes go to the
+  per-project paths (`$CONTENT_HOME/brand/...`, `$KEY_FILE` instead of
+  `~/.config/content/.env`). After setup, continue to Step 1.
 
 ### 0a. Welcome + API key
 
@@ -117,15 +179,22 @@ welcome inside the modal):
 - Skip for now
 
 If they pick "Open scrapecreators.com", run `open https://scrapecreators.com`,
-then ask them to paste the key. When the user pastes a key, write
-`~/.config/content/.env` (create dirs; append, don't clobber other keys):
+then ask them to paste the key. When the user pastes a key, write to the
+correct path for the mode:
+
+- Single-project: `~/.config/content/.env`
+- Multi-project: `$KEY_FILE` (= `~/.config/content/<slug>.env`)
+
+(Create dirs; append, don't clobber other keys):
 
 ```
 SCRAPECREATORS_API_KEY={key}
 SETUP_COMPLETE=true
 ```
 
-If they skip, write only `SETUP_COMPLETE=true`.
+If they skip, write only `SETUP_COMPLETE=true`. In multi-project mode also
+write the slug to `~/.config/content/last-project` so bare `/content-ideas`
+defaults to this project next time.
 
 ### 0b. Manual alternative
 
@@ -301,27 +370,48 @@ the script scores relevance, and the last-run date via `--since`. Leave `--days`
 at its default (7) unless the user asks for a wider window, then raise it (max
 31).
 
-**Wrapper-first invocation.** If `$CONTENT_HOME/bin/scrape.sh` exists, prefer it
-over the bare `scrape.py` — wrappers typically add per-user logging (credits
-tracking, run-log appending, threshold alerts) that the base script intentionally
-doesn't know about. Pass identical args; the wrapper forwards them. Otherwise
-fall back to bare `scrape.py`:
+**Wrapper-first invocation.** If a wrapper was discovered in the "Resolve
+the project" step (multi-project mode) OR if `$CONTENT_HOME/bin/scrape.sh`
+exists (single-project convention), prefer it over the bare `scrape.py`.
+Wrappers add per-user logging (credits tracking, run-log appending,
+threshold alerts) that the base script intentionally doesn't know about.
+
+Multi-project mode passes the slug as the first arg; the wrapper resolves
+`CONTENT_HOME` + key from that. Single-project wrappers don't take a slug.
 
 ```bash
-# Preferred (when wrapper exists):
+# Multi-project wrapper (slug as first arg, wrapper handles paths + key):
+"$CI_ROOT/bin/scrape.sh" "<slug>" \
+  '{"x": ["h1","h2"], "instagram": ["h3"], "youtube": ["@h4"]}' \
+  --pillars "<the user's content pillars>" \
+  --since 2026-04-15 \
+  --days 7
+
+# Single-project wrapper (no slug; uses $CONTENT_HOME + ~/.config/content/.env):
 "$CONTENT_HOME/bin/scrape.sh" \
   '{"x": ["h1","h2"], "instagram": ["h3"], "youtube": ["@h4"]}' \
   --pillars "<the user's content pillars>" \
   --since 2026-04-15 \
   --days 7
 
-# Fallback (no wrapper):
+# Bare fallback (no wrapper at all):
 python3 "$SKILL_DIR/scripts/scrape.py" \
   '{"x": ["h1","h2"], "instagram": ["h3"], "youtube": ["@h4"]}' \
   --pillars "<the user's content pillars>" \
   --since 2026-04-15 \
   --days 7
 ```
+
+**Wrapper exit codes (multi-project mode)** that you should handle in
+the calling flow rather than treating as generic failures:
+- `3` — project dir doesn't exist. **Trigger new-project setup** (Step 0
+  flow), then retry the wrapper call.
+- `4` — API key file missing for this slug. Ask the user for the key,
+  write `$KEY_FILE`, retry.
+- `5` — key file present but `SCRAPECREATORS_API_KEY` empty. Same fix
+  as `4`.
+- Anything else (including `1`, `2`) — surface the wrapper's stderr to
+  the user and stop.
 
 Tell the user this takes a few minutes; progress streams to stderr. The script
 fetches all accounts in parallel, **drops anything outside the recency window**,
