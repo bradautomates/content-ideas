@@ -301,7 +301,21 @@ the script scores relevance, and the last-run date via `--since`. Leave `--days`
 at its default (7) unless the user asks for a wider window, then raise it (max
 31).
 
+**Wrapper-first invocation.** If `$CONTENT_HOME/bin/scrape.sh` exists, prefer it
+over the bare `scrape.py` — wrappers typically add per-user logging (credits
+tracking, run-log appending, threshold alerts) that the base script intentionally
+doesn't know about. Pass identical args; the wrapper forwards them. Otherwise
+fall back to bare `scrape.py`:
+
 ```bash
+# Preferred (when wrapper exists):
+"$CONTENT_HOME/bin/scrape.sh" \
+  '{"x": ["h1","h2"], "instagram": ["h3"], "youtube": ["@h4"]}' \
+  --pillars "<the user's content pillars>" \
+  --since 2026-04-15 \
+  --days 7
+
+# Fallback (no wrapper):
 python3 "$SKILL_DIR/scripts/scrape.py" \
   '{"x": ["h1","h2"], "instagram": ["h3"], "youtube": ["@h4"]}' \
   --pillars "<the user's content pillars>" \

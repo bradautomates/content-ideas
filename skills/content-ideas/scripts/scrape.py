@@ -35,6 +35,7 @@ from lib import pipeline  # noqa: E402
 from lib.analyze import analyze_results  # noqa: E402
 from lib.dates import days_ago  # noqa: E402
 from lib.env import load_api_key  # noqa: E402
+from lib.http import get_last_credits_remaining  # noqa: E402
 from lib.log import log  # noqa: E402
 from lib.relevance import parse_pillars  # noqa: E402
 
@@ -79,6 +80,29 @@ def _effective_since(since, days):
     return max(since, cutoff) if since else cutoff
 
 
+def _emit_credits():
+    """Log credits_remaining to stderr and write a sidecar file when CONTENT_HOME is set.
+
+    The sidecar lives at $CONTENT_HOME/.last-credits and contains a single integer.
+    External wrappers (e.g. a daily-run script) can read it to update usage logs
+    without making a second API call.
+    """
+    import os
+    credits = get_last_credits_remaining()
+    if credits is None:
+        return
+    log(f"[credits] credits_remaining: {credits}")
+    home = os.environ.get("CONTENT_HOME")
+    if not home:
+        return
+    sidecar = Path(home) / ".last-credits"
+    try:
+        sidecar.parent.mkdir(parents=True, exist_ok=True)
+        sidecar.write_text(str(credits) + "\n")
+    except OSError as e:
+        log(f"[credits] could not write {sidecar}: {e}")
+
+
 def main(argv=None):
     argv = list(sys.argv if argv is None else argv)
     if len(argv) < 2:
@@ -106,6 +130,7 @@ def main(argv=None):
         start = time.time()
         results, errors = pipeline.fetch_urls(urls, api_key, pillar_tokens)
         log(f"✓ Done ({time.time() - start:.1f}s) — {len(results)} post(s)")
+        _emit_credits()
         json.dump({"results": results, "errors": errors}, sys.stdout, indent=2)
         return 0
 
@@ -124,6 +149,7 @@ def main(argv=None):
 
     total = sum(len(posts) for handles in results.values() for posts in handles.values())
     log(f"Done ({time.time() - start:.1f}s) -- {total} posts across {len(results)} platform(s)")
+    _emit_credits()
 
     json.dump({"results": results, "errors": errors}, sys.stdout, indent=2)
     return 0
