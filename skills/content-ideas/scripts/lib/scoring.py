@@ -30,5 +30,22 @@ def score_engagement(post):
                 + e.get("likes", 0)
                 + 3 * e.get("comments", 0))
 
+    if platform == "reddit":
+        # Reddit's `score` already nets ups - downs. Comments are high-signal
+        # (engagement cost is higher than upvoting). Weight upvote_ratio as a
+        # quality multiplier — controversial posts score lower even at high ups.
+        score = e.get("score", 0) or e.get("ups", 0)
+        ratio = e.get("upvote_ratio", 1.0) or 1.0
+        return (score * ratio) + (3 * e.get("comments", 0))
+
+    if platform == "bluesky":
+        # Bluesky has no native views metric; weight reposts/quotes (active
+        # amplification) higher than likes (passive). Replies count without
+        # text but still signal engagement depth.
+        return (e.get("likes", 0)
+                + 2 * e.get("reposts", 0)
+                + 2 * e.get("quotes", 0)
+                + 3 * e.get("replies", 0))
+
     # Fallback: sum all numeric values
     return sum(v for v in e.values() if isinstance(v, (int, float)))
