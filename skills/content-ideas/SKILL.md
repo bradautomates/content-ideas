@@ -68,12 +68,15 @@ scripts you'll call are `$SKILL_DIR/scripts/scrape.py` and
 
 This skill supports two operating modes:
 
-- **Single-project** (default, original behavior) — one `brand/`, one
-  `~/.config/content/.env`. Everything lives under one `CONTENT_HOME`.
-- **Multi-project** — multiple isolated projects, each with its own
-  brand/, tracked accounts, research history, and API key. Selected via
-  a slug arg: `/content-ideas <slug>` or `/content-ideas` (defaults to
-  last-used slug).
+- **Single-project** (legacy behavior for users who installed before
+  multi-project landed) — one `brand/`, one `~/.config/content/.env`.
+  Everything lives under one `CONTENT_HOME`.
+- **Multi-project** (default for new installs) — multiple isolated
+  projects, each with its own brand/, tracked accounts, research
+  history, and API key. Selected via a slug arg:
+  `/content-ideas <slug>` or `/content-ideas` (defaults to last-used
+  slug). Fresh installs always start in this mode via Step 0a–0b
+  (install-path + first-project-slug setup).
 
 Detect mode by checking `$ARGUMENTS`:
 
@@ -84,18 +87,26 @@ Detect mode by checking `$ARGUMENTS`:
 2. **If no slug given, look for** `~/.config/content/last-project` and
    read its contents as the slug (this is how bare `/content-ideas`
    defaults to the user's last project).
-3. **If neither yields a slug**, you're in single-project mode — skip
-   straight to "Resolve the content home" below.
+3. **If neither yields a slug AND `CONTENT_IDEAS_HOME` is set** (env var
+   or `.env` file), you're a fresh-install user mid-Step-0 — go to
+   Step 0b to name the first project.
+4. **If neither yields a slug AND no `CONTENT_IDEAS_HOME` either** —
+   you're in legacy single-project mode (or a truly fresh install that
+   needs the full Step 0 flow). Skip straight to "Resolve the content
+   home" below; Step 0 will sort it out.
 
 When you resolve a slug, **announce it explicitly to the user**:
 `Using project: <slug>` so a wrong-default catches their eye immediately.
 A bare-call default that doesn't match the user's intent is the riskiest
 UX failure here.
 
-Then locate the wrapper that drives multi-project routing. Check these in
-order:
+Then locate the wrapper that drives multi-project routing (optional —
+the skill works without it, just w/o the auto-credit-logging). Resolve
+`$CONTENT_IDEAS_HOME` first (env var → `.env` file value → default
+`~/Documents/Content` — see `env.py:content_ideas_home()`). Then check
+these wrapper paths in order:
 
-1. `$CONTENT_IDEAS_HOME/bin/scrape.sh` (if `CONTENT_IDEAS_HOME` is set)
+1. `$CONTENT_IDEAS_HOME/bin/scrape.sh` (resolved as above)
 2. `$HOME/ObsidianVaults/mise/content-ideas/bin/scrape.sh` (vault convention)
 3. `$HOME/Documents/Content/bin/scrape.sh` (Content-dir convention)
 4. `$CONTENT_HOME/bin/scrape.sh` (single-project wrapper, if `CONTENT_HOME` is set)
@@ -144,19 +155,73 @@ themselves, so a relative `research/{today}` passed to them resolves here too.
 
 **Run this before anything else, even if the user gave a topic.**
 
-- **Single-project mode:** Detect first run by checking whether
-  `~/.config/content/.env` exists and contains `SETUP_COMPLETE=true`.
-  Check silently. If it's already set up, skip to Step 1.
-- **Multi-project mode:** Check whether `$CONTENT_HOME` (the per-project
-  dir, resolved above as `$CI_ROOT/projects/<slug>/`) exists. If it does
-  AND `$KEY_FILE` exists, the project is set up — skip to Step 1.
-  Otherwise this is a **new-project setup** — confirm the slug with the
-  user via `AskUserQuestion` before writing anything (chance to back out
-  or retype), then run the setup steps below. All file writes go to the
-  per-project paths (`$CONTENT_HOME/brand/...`, `$KEY_FILE` instead of
-  `~/.config/content/.env`). After setup, continue to Step 1.
+### 0a. First-ever install — choose where files live
 
-### 0a. Welcome + API key
+If this is a **truly fresh install** — `~/.config/content/.env` doesn't
+exist, no `<slug>.env` files exist in that dir, and `$CONTENT_IDEAS_HOME`
+isn't set anywhere — ask the user where they'd like content-ideas to
+store the brand profile, tracked accounts, and dated research history.
+Otherwise skip this step (an existing install already picked a path).
+
+Show a short note about why this matters, then `AskUserQuestion`:
+
+> Before anything else: where should content-ideas store your files?
+> Brand profile, tracked competitors, and the daily research/feed
+> outputs live here. Pick somewhere durable — this is the home for
+> everything the skill writes, across all projects and all daily runs.
+
+Offer these options:
+- `~/Documents/Content/` (default, no decision needed)
+- `~/Content/` (top-of-home, shorter path)
+- `~/.local/share/content-ideas/` (XDG-compliant, hidden by default)
+- Other — paste a path (e.g. inside an Obsidian vault, iCloud Drive,
+  Dropbox; great for users who already have a "second-brain" tree)
+
+Expand `~` and create the dir. Write `CONTENT_IDEAS_HOME=<absolute-path>`
+to `~/.config/content/.env` (create the dir + file if missing). All
+future invocations read this; `env.py:content_ideas_home()` is the
+resolver.
+
+This is the install-root. The skill always operates in multi-project mode
+from here — even users who'll only ever have one project get a clean
+`<install-root>/projects/<slug>/` layout that's trivial to extend later.
+
+### 0b. Name the first project (slug)
+
+After the path is chosen (or on any later invocation against an unknown
+slug), prompt for the project slug. `AskUserQuestion`:
+
+> What should we call this project? Pick a short slug — lowercase,
+> dashes-not-spaces. This becomes the project identifier you'll pass
+> as `/content-ideas <slug>` to invoke this feed specifically. For a
+> "just one feed" install, pick whatever fits your brand/persona
+> ("my-brand", "my-channel", etc.) — you can rename later by moving
+> the dir.
+
+Validate slug shape (alphanumeric + dashes/underscores; reject spaces +
+quotes + braces — those collide with the multi-project arg-parser). Set:
+
+```
+CONTENT_HOME = $CONTENT_IDEAS_HOME/projects/<slug>/
+KEY_FILE     = ~/.config/content/<slug>.env
+```
+
+Create `$CONTENT_HOME/brand/tracked-accounts/` and seed
+`~/.config/content/last-project` with this slug.
+
+### 0c. Existing-install / new-project detection
+
+If the user invoked the skill against an **existing project**
+(`$CONTENT_HOME` + `$KEY_FILE` both already exist for this slug), skip
+0d–0g and continue to Step 1. Otherwise — fresh install OR known
+`CONTENT_IDEAS_HOME` but unknown slug — continue setup below.
+
+Confirm the slug with the user via `AskUserQuestion` before writing
+anything (chance to back out or retype). Then run 0d–0g. All file writes
+go to the per-project paths (`$CONTENT_HOME/brand/...`, `$KEY_FILE`).
+After setup, continue to Step 1.
+
+### 0d. Welcome + API key
 
 Setup has three quick parts: an API key, **your** profile (built from your own
 channels), and the competitors you want to track. Only the key is required —
@@ -196,12 +261,12 @@ If they skip, write only `SETUP_COMPLETE=true`. In multi-project mode also
 write the slug to `~/.config/content/last-project` so bare `/content-ideas`
 defaults to this project next time.
 
-### 0b. Manual alternative
+### 0e. Manual alternative
 
 If they'd rather configure by hand, tell them to add those two lines to
 `~/.config/content/.env`. Offer to write the file if they paste the key here.
 
-### 0c. Build your brand profile
+### 0f. Build your brand profile
 
 This is what personalizes everything: ideas get framed against *your* niche,
 pillars, and goal, and checked against what you've already posted. Build it from
@@ -246,7 +311,7 @@ build a minimal `brand/profile.md` from a 2–3 question Q&A (niche, rough
 pillars, goal), note that re-running setup with a key auto-enriches it, and move
 on.
 
-### 0d. Track competitors
+### 0g. Track competitors
 
 Ask who they want to track (`AskUserQuestion`: list them now / skip and use an
 example). If they list handles, create `brand/tracked-accounts/{platform}.md`
@@ -308,7 +373,7 @@ topic before scraping.
 ### 1c. Refresh your own content (`my-content.md`)
 
 Before generating ideas, bring `brand/my-content.md` up to date — this is the
-per-run counterpart to the one-time build in Step 0c, and it's what keeps
+per-run counterpart to the one-time build in Step 0f, and it's what keeps
 anti-cannibalization and the "your audience is asking for" banner honest as the
 user keeps posting. (`my-content.md` is declared *updated each run* in
 `FILE-SCHEMAS.md`; this is the step that does it.)
@@ -317,7 +382,7 @@ Take the user's own handles from the `## My Social Profiles` section of the
 `brand/profile.md` you just loaded, normalize them into the `{platform: [handle]}`
 shape, and re-scrape them over a window wide enough to catch their own cadence
 (`--days 30` — a creator's own posts are sparser than the merged competitor
-feed, but keep it "recent," not the 90-day profile build from Step 0c):
+feed, but keep it "recent," not the 90-day profile build from Step 0f):
 
 ```bash
 python3 "$SKILL_DIR/scripts/scrape.py" \
@@ -350,7 +415,7 @@ surfaces stale posts: by default it keeps only the **last 7 days** (`--days`).
 `--since` can only *narrow* that window, never widen it — so first runs and
 long-gap runs are both bounded to a week by default. (The script's hard cap is
 90 days; for the daily feed keep it tight — a month at most. The 90-day window
-is for one-off profile builds in Step 0c, not the daily feed.)
+is for one-off profile builds in Step 0f, not the daily feed.)
 
 Create `$CONTENT_HOME/research/{today}/`.
 
