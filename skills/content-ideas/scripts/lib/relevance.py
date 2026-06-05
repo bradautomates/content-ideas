@@ -36,7 +36,7 @@ def score_relevance(post, pillar_tokens):
     if not pillar_tokens:
         return 0.5  # No pillars = neutral
 
-    text = post.get("text", "") + " " + post.get("description", "") + " " + post.get("transcript", "")
+    text = (post.get("text") or "") + " " + (post.get("description") or "") + " " + (post.get("transcript") or "")
     post_tokens = tokenize(text)
 
     if not post_tokens:

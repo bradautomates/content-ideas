@@ -64,13 +64,75 @@ scripts you'll call are `$SKILL_DIR/scripts/scrape.py` and
 `$SKILL_DIR/scripts/generate_feed.py`. The renderer template is
 `$SKILL_DIR/assets/for-you-template.html` (the generator finds it automatically).
 
+## Resolve the project (multi-project mode)
+
+This skill supports two operating modes:
+
+- **Single-project** (legacy behavior for users who installed before
+  multi-project landed) — one `brand/`, one `~/.config/content/.env`.
+  Everything lives under one `CONTENT_HOME`.
+- **Multi-project** (default for new installs) — multiple isolated
+  projects, each with its own brand/, tracked accounts, research
+  history, and API key. Selected via a slug arg:
+  `/content-ideas <slug>` or `/content-ideas` (defaults to last-used
+  slug). Fresh installs always start in this mode via Step 0a–0b
+  (install-path + first-project-slug setup).
+
+Detect mode by checking `$ARGUMENTS`:
+
+1. **Parse the first token** of `$ARGUMENTS`. If it's a single identifier
+   (alphanumeric, dashes, underscores — no spaces, no quotes, no JSON
+   braces), treat it as a candidate slug. Pop it from arguments before
+   passing the remainder downstream.
+2. **If no slug given, look for** `~/.config/content/last-project` and
+   read its contents as the slug (this is how bare `/content-ideas`
+   defaults to the user's last project).
+3. **If neither yields a slug AND `CONTENT_IDEAS_HOME` is set** (env var
+   or `.env` file), you're a fresh-install user mid-Step-0 — go to
+   Step 0b to name the first project.
+4. **If neither yields a slug AND no `CONTENT_IDEAS_HOME` either** —
+   you're in legacy single-project mode (or a truly fresh install that
+   needs the full Step 0 flow). Skip straight to "Resolve the content
+   home" below; Step 0 will sort it out.
+
+When you resolve a slug, **announce it explicitly to the user**:
+`Using project: <slug>` so a wrong-default catches their eye immediately.
+A bare-call default that doesn't match the user's intent is the riskiest
+UX failure here.
+
+Then locate the wrapper that drives multi-project routing (optional —
+the skill works without it, just w/o the auto-credit-logging). Resolve
+`$CONTENT_IDEAS_HOME` first (env var → `.env` file value → default
+`~/Documents/Content` — see `env.py:content_ideas_home()`). Then check
+these wrapper paths in order:
+
+1. `$CONTENT_IDEAS_HOME/bin/scrape.sh` (resolved as above)
+2. `$HOME/ObsidianVaults/mise/content-ideas/bin/scrape.sh` (vault convention)
+3. `$HOME/Documents/Content/bin/scrape.sh` (Content-dir convention)
+4. `$CONTENT_HOME/bin/scrape.sh` (single-project wrapper, if `CONTENT_HOME` is set)
+
+The first match wins. Capture its directory as `CI_ROOT` (= `$(dirname
+$(dirname <wrapper>))`). Per-project state then lives at:
+
+```
+CONTENT_HOME = $CI_ROOT/projects/<slug>/
+KEY_FILE     = ~/.config/content/<slug>.env
+```
+
+If no wrapper exists, you're in single-project mode regardless of slug —
+warn the user and fall back to the single-project flow.
+
 ## Resolve the content home
 
-All persistent files this skill reads and writes — the `brand/` profile and the
-dated `research/` runs — live under one stable base, **never** the current
-working directory. The skill runs daily and is invoked from anywhere, so the
-base must be the same every time or it loses the profile and the run history.
-Resolve it once and capture the concrete path:
+(Multi-project mode resolved this in the previous section. Skip ahead to
+Step 0 unless you're falling back to single-project.)
+
+In **single-project mode**, all persistent files this skill reads and
+writes — the `brand/` profile and the dated `research/` runs — live under
+one stable base, **never** the current working directory. The skill runs
+daily and is invoked from anywhere, so the base must be the same every
+time or it loses the profile and the run history. Resolve it once and
+capture the concrete path:
 
 ```bash
 CONTENT_HOME="${CONTENT_HOME:-$HOME/Documents/Content}"
@@ -83,111 +145,19 @@ Throughout this guide every `brand/...` and `research/...` path is relative to
 **Use the printed absolute path for every Read/Write of those files** — the
 file tools don't expand shell variables, so writing a bare `brand/profile.md`
 would land it in the wrong directory. (Credentials stay separate, in
-`~/.config/content/.env`.) The scrape/generate scripts read `CONTENT_HOME`
+`~/.config/content/.env` for single-project, or `~/.config/content/<slug>.env`
+for multi-project.) The scrape/generate scripts read `CONTENT_HOME`
 themselves, so a relative `research/{today}` passed to them resolves here too.
 
 ---
 
-## Step 0: First-run setup
+## Step 0: First-run setup (or new-project setup)
 
-**Run this before anything else, even if the user gave a topic.** Detect first
-run by checking whether `~/.config/content/.env` exists and contains
-`SETUP_COMPLETE=true`. Check silently. If it's already set up, skip to Step 1.
+**Run this before anything else, even if the user gave a topic.**
 
-### 0a. Welcome + API key
+This step has 7 substeps (0a–0g) covering: install-path choice, project-slug naming, existing-install detection, API-key collection, manual-config alternative, brand-profile bootstrap from the user's own channels, and competitor-tracker seeding.
 
-Setup has three quick parts: an API key, **your** profile (built from your own
-channels), and the competitors you want to track. Only the key is required —
-the rest the skill bootstraps for you and you can refine any time. Nothing to
-install; one ScrapeCreators API key covers all four platforms — X, Instagram,
-TikTok, and YouTube (including transcripts).
-
-Show this as a normal message, then call `AskUserQuestion` (don't repeat the
-welcome inside the modal):
-
-> I turn your social presence into a daily For You feed: I build a profile from
-> your own channels, track the competitors you pick, and surface what's
-> performing as content ideas backed by real engagement. I just need a
-> ScrapeCreators API key (one key covers all four platforms; 100 free calls, no
-> card).
-
-`AskUserQuestion` — "Add your ScrapeCreators API key?"
-- Open scrapecreators.com to grab a free key
-- I'll paste a key now
-- Skip for now
-
-If they pick "Open scrapecreators.com", run `open https://scrapecreators.com`,
-then ask them to paste the key. When the user pastes a key, write
-`~/.config/content/.env` (create dirs; append, don't clobber other keys):
-
-```
-SCRAPECREATORS_API_KEY={key}
-SETUP_COMPLETE=true
-```
-
-If they skip, write only `SETUP_COMPLETE=true`.
-
-### 0b. Manual alternative
-
-If they'd rather configure by hand, tell them to add those two lines to
-`~/.config/content/.env`. Offer to write the file if they paste the key here.
-
-### 0c. Build your brand profile
-
-This is what personalizes everything: ideas get framed against *your* niche,
-pillars, and goal, and checked against what you've already posted. Build it from
-the user's own presence rather than a long questionnaire.
-
-Ask for their own channels (`AskUserQuestion`: "Set up your profile now?" →
-**I'll share my handles** / **Skip — I'll add it later**). When they share
-handles — free-form across any platforms (`@me` on X, a YouTube channel, a
-TikTok, etc.) — normalize them into the `{platform: [handle]}` shape and scrape
-them like competitors, but over a much wider window (`--days 90`, the max) so
-you characterize their work from a full quarter, not just recent posts:
-
-```bash
-python3 "$SKILL_DIR/scripts/scrape.py" \
-  '{"x": ["me"], "youtube": ["@mychannel"]}' \
-  --pillars "" --days 90
-```
-
-From the returned posts (plus comments/transcripts), draft the profile:
-- **Niche, Audience, Voice Notes** — infer from recurring topics, framing, tone.
-- **Content Pillars** — the 3–5 themes their posts actually cluster into. These
-  drive `--pillars` on every future run, so get them right.
-- **My Social Profiles** — handle, follower count, bio, and a one-line content-
-  style note per platform, taken from the scrape.
-- **Target Platforms / Research Channels** — the platforms they're active on.
-- **Search Terms** — concrete keywords from their top topics.
-
-Two things you can't scrape — **ask** (`AskUserQuestion`), then fold the answers in:
-- **Content Goal** — why they post (lead gen / awareness / growth / thought
-  leadership / selling…), where they drive traffic, and what they're promoting.
-- **Pillar confirmation** — show the 3–5 pillars you inferred and let them
-  edit or confirm before writing.
-
-Write `brand/profile.md` per the schema in `FILE-SCHEMAS.md`. If the scrape
-returned enough of their own posts, also write an initial `brand/my-content.md`
-(performance summary, what's working, topics covered, and audience requests
-distilled from their comments) — this powers anti-cannibalization and the "your
-audience is asking for" banner from day one.
-
-**If they skipped** (or there's no API key yet to scrape with), don't block:
-build a minimal `brand/profile.md` from a 2–3 question Q&A (niche, rough
-pillars, goal), note that re-running setup with a key auto-enriches it, and move
-on.
-
-### 0d. Track competitors
-
-Ask who they want to track (`AskUserQuestion`: list them now / skip and use an
-example). If they list handles, create `brand/tracked-accounts/{platform}.md`
-files per the schema in the plugin's `FILE-SCHEMAS.md`. If they skip, run a
-small example so they see the shape, and tell them they can add real
-competitors later.
-
-**End of first-run setup.** Then continue with the user's original request.
-
----
+Detection — if `~/.config/content/.env` exists AND `<slug>.env` exists for the resolved project AND `SETUP_COMPLETE=true`, skip Step 0 entirely and go to Step 1. Otherwise, **see `references/first-run-setup.md` for the full setup flow** (substeps 0a–0g + the `AskUserQuestion` prompts, slug-validation rules, and brand-profile scrape pattern).
 
 ## Step 1: Load context
 
@@ -239,7 +209,7 @@ topic before scraping.
 ### 1c. Refresh your own content (`my-content.md`)
 
 Before generating ideas, bring `brand/my-content.md` up to date — this is the
-per-run counterpart to the one-time build in Step 0c, and it's what keeps
+per-run counterpart to the one-time build in Step 0f, and it's what keeps
 anti-cannibalization and the "your audience is asking for" banner honest as the
 user keeps posting. (`my-content.md` is declared *updated each run* in
 `FILE-SCHEMAS.md`; this is the step that does it.)
@@ -248,7 +218,7 @@ Take the user's own handles from the `## My Social Profiles` section of the
 `brand/profile.md` you just loaded, normalize them into the `{platform: [handle]}`
 shape, and re-scrape them over a window wide enough to catch their own cadence
 (`--days 30` — a creator's own posts are sparser than the merged competitor
-feed, but keep it "recent," not the 90-day profile build from Step 0c):
+feed, but keep it "recent," not the 90-day profile build from Step 0f):
 
 ```bash
 python3 "$SKILL_DIR/scripts/scrape.py" \
@@ -281,7 +251,7 @@ surfaces stale posts: by default it keeps only the **last 7 days** (`--days`).
 `--since` can only *narrow* that window, never widen it — so first runs and
 long-gap runs are both bounded to a week by default. (The script's hard cap is
 90 days; for the daily feed keep it tight — a month at most. The 90-day window
-is for one-off profile builds in Step 0c, not the daily feed.)
+is for one-off profile builds in Step 0f, not the daily feed.)
 
 Create `$CONTENT_HOME/research/{today}/`.
 
@@ -301,13 +271,48 @@ the script scores relevance, and the last-run date via `--since`. Leave `--days`
 at its default (7) unless the user asks for a wider window, then raise it (max
 31).
 
+**Wrapper-first invocation.** If a wrapper was discovered in the "Resolve
+the project" step (multi-project mode) OR if `$CONTENT_HOME/bin/scrape.sh`
+exists (single-project convention), prefer it over the bare `scrape.py`.
+Wrappers add per-user logging (credits tracking, run-log appending,
+threshold alerts) that the base script intentionally doesn't know about.
+
+Multi-project mode passes the slug as the first arg; the wrapper resolves
+`CONTENT_HOME` + key from that. Single-project wrappers don't take a slug.
+
 ```bash
+# Multi-project wrapper (slug as first arg, wrapper handles paths + key):
+"$CI_ROOT/bin/scrape.sh" "<slug>" \
+  '{"x": ["h1","h2"], "instagram": ["h3"], "youtube": ["@h4"]}' \
+  --pillars "<the user's content pillars>" \
+  --since 2026-04-15 \
+  --days 7
+
+# Single-project wrapper (no slug; uses $CONTENT_HOME + ~/.config/content/.env):
+"$CONTENT_HOME/bin/scrape.sh" \
+  '{"x": ["h1","h2"], "instagram": ["h3"], "youtube": ["@h4"]}' \
+  --pillars "<the user's content pillars>" \
+  --since 2026-04-15 \
+  --days 7
+
+# Bare fallback (no wrapper at all):
 python3 "$SKILL_DIR/scripts/scrape.py" \
   '{"x": ["h1","h2"], "instagram": ["h3"], "youtube": ["@h4"]}' \
   --pillars "<the user's content pillars>" \
   --since 2026-04-15 \
   --days 7
 ```
+
+**Wrapper exit codes (multi-project mode)** that you should handle in
+the calling flow rather than treating as generic failures:
+- `3` — project dir doesn't exist. **Trigger new-project setup** (Step 0
+  flow), then retry the wrapper call.
+- `4` — API key file missing for this slug. Ask the user for the key,
+  write `$KEY_FILE`, retry.
+- `5` — key file present but `SCRAPECREATORS_API_KEY` empty. Same fix
+  as `4`.
+- Anything else (including `1`, `2`) — surface the wrapper's stderr to
+  the user and stop.
 
 Tell the user this takes a few minutes; progress streams to stderr. The script
 fetches all accounts in parallel, **drops anything outside the recency window**,

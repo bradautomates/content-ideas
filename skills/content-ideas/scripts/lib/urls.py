@@ -12,6 +12,10 @@ def detect_platform(url):
         return "tiktok"
     if "youtube.com/" in url_lower or "youtu.be/" in url_lower:
         return "youtube"
+    if "reddit.com/" in url_lower or "redd.it/" in url_lower:
+        return "reddit"
+    if "bsky.app/" in url_lower:
+        return "bluesky"
     return None
 
 
@@ -41,6 +45,22 @@ def extract_handle_from_url(url, platform):
                 if p.startswith("@"):
                     return p.lstrip("@")
             return None
+        if platform == "reddit":
+            # https://www.reddit.com/r/SUBREDDIT/comments/ID/... — return the subreddit
+            parts = url.rstrip("/").split("/")
+            try:
+                r_idx = parts.index("r")
+                return parts[r_idx + 1] if r_idx + 1 < len(parts) else None
+            except ValueError:
+                return None
+        if platform == "bluesky":
+            # https://bsky.app/profile/HANDLE/post/RKEY
+            parts = url.rstrip("/").split("/")
+            try:
+                p_idx = parts.index("profile")
+                return parts[p_idx + 1] if p_idx + 1 < len(parts) else None
+            except ValueError:
+                return None
     except (StopIteration, IndexError):
         return None
     return None

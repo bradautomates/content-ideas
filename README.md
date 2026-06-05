@@ -24,6 +24,74 @@ One [ScrapeCreators](https://scrapecreators.com) API key covers all four platfor
 
 ---
 
+## What's new in this fork
+
+This is a fork of [`bradautomates/content-ideas`](https://github.com/bradautomates/content-ideas) — see the original README above for the core concept and install. This section documents what's added on top.
+
+All additions are backward-compatible: existing installs see no behavior change. The commits on the open PR ([#1](https://github.com/bradautomates/content-ideas/pull/1)) bundle:
+
+### 1. Two more platforms — Reddit + Bluesky
+
+ScrapeCreators supports both; the plugin only wired four. This fork adds them following the same per-platform-module pattern.
+
+- **Reddit** is **subreddit-centric** (ScrapeCreators doesn't expose `/v1/reddit/user/posts`). The "handle" passed to the profile fetcher is a subreddit name (with or without `r/`). Comments + transcripts work. Engagement scoring weights `score × upvote_ratio + 3×comments` so controversial high-vote posts don't dominate.
+- **Bluesky** is **user-centric**, mirrors X/IG/YT. No comments endpoint exists yet (replyCount is captured but reply text isn't retrievable). No transcript endpoint (Bluesky is text-only). Engagement weights reposts + quotes 2× and replies 3× (active amplification > passive likes).
+
+Example tracked-accounts files:
+```markdown
+# Reddit — Tracked Subreddits
+| Subreddit | Notes |
+| r/ClaudeAI | AI dev community |
+| r/Solopreneur | Audience target |
+
+# Bluesky — Tracked Accounts
+| Handle | Notes |
+| pfrazee.com | AT-proto core |
+```
+
+### 2. Credits surfacing (`credits_remaining`)
+
+ScrapeCreators returns `credits_remaining` in nearly every response. Upstream throws it away. This fork captures it at the HTTP layer (`lib/http.py` exposes `get_last_credits_remaining()`), prints `[credits] N` to stderr at end of every run, and writes a single-int sidecar at `$CONTENT_HOME/.last-credits` when `CONTENT_HOME` is set.
+
+External wrappers can read the sidecar to maintain a usage log without making a separate balance probe. Zero extra API calls.
+
+### 3. Multi-project mode (slug-aware, opt-in)
+
+Run multiple non-overlapping content lines from one install — a SaaS site + a personal brand + a side project — each with its own brand profile, tracked accounts, research history, and (recommended) its own ScrapeCreators API key for per-project attribution against a shared credit pool.
+
+```
+/content-ideas <slug>       # routes to that project
+/content-ideas              # uses ~/.config/content/last-project
+```
+
+Per-project state lives at `<CI_ROOT>/projects/<slug>/{brand,research}/`; per-project key at `~/.config/content/<slug>.env`. A first invocation against an unknown slug auto-triggers new-project setup (API key + profile Q&A + tracked accounts).
+
+Multi-project is opt-in via a wrapper script. The skill detects the wrapper at conventional locations (`$CONTENT_IDEAS_HOME/bin/scrape.sh`, the vault convention, or `$CONTENT_HOME/bin/scrape.sh`) and uses it when present. With no wrapper + no slug, single-project mode is unchanged.
+
+A reference wrapper is in the user's vault layer, not the plugin — that's where per-user logging concerns (api-usage.md format, low-credit thresholds, run-log shape) belong. The plugin itself stays vault-agnostic.
+
+### 4. Defensive fix — `relevance.py` None concat
+
+`post.get("description", "")` returns the default only when the key is missing; some platform responses contain explicit `None` for that field and crash the run mid-pipeline. One-line `(post.get(k) or "")` fix.
+
+### 5. Install-path setup on first run
+
+Upstream silently defaults to `~/Documents/Content/` with no install-time prompt — by the time you notice you've already accumulated a `brand/` profile and a few `research/` days in the wrong location. On macOS this surprises users who keep durable state in iCloud Drive, an Obsidian vault, `~/Content`, or some XDG-style hidden dir.
+
+First invocation now asks explicitly. Step 0a (only fires on a truly-fresh install — no existing `~/.config/content/.env`, no `<slug>.env` files, no `CONTENT_IDEAS_HOME` env var):
+
+> Before anything else: where should content-ideas store your files? Brand profile, tracked competitors, and the daily research/feed outputs live here.
+
+Offers `~/Documents/Content/` (default), `~/Content/`, `~/.local/share/content-ideas/` (XDG), or paste-a-path. The chosen path is written as `CONTENT_IDEAS_HOME=<path>` in `~/.config/content/.env` so it persists across shells and sessions without modifying the user's rc files.
+
+Fresh installs always continue into multi-project mode (Step 0b asks for the first project's slug). Solo-feed users get a one-project install they never have to switch from; the `projects/<slug>/` layout is a no-cost upgrade path when they add a second feed later.
+
+**New resolver in `env.py`** — `content_ideas_home()`: env var → `.env` file value → default `~/Documents/Content`. `content_home()` now falls back through this so single-project users get the right behavior automatically.
+
+**Backward compat:** any sign of an existing install (an `.env` file at the legacy path, a `CONTENT_HOME` env var, etc.) skips Step 0a entirely. No re-prompting.
+
+---
+
 ## The problem it solves
 
 The hard part about content is everything *before* the idea: opening four apps, scrolling until something sparks, watching a pile of other people's videos, and trying to hold the patterns in your head just to figure out what's worth making this week. That research grind eats hours.
